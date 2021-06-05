@@ -45,7 +45,7 @@ jobs:
     # Run tests
     - name: run tests
       run: |
-        python -m pytest --cov=functions --cov-report=xml .
+        python -m pytest --cov=ddgan ./ddgan/tests/tests.py
     - uses: codecov/codecov-action@v1
       with:
         token: e1d6d7a9-effc-4a94-9734-8495bd4748c8
