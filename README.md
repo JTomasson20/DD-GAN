@@ -98,7 +98,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 <!-- CONTACT -->
 
 
-## Contact (Names not listed in order)
+## Contact
 
 * Tómasson, Jón Atli jon.tomasson20@imperial.ac.uk
 * Wolffs, Zef zef.wolffs20@imperial.ac.uk
