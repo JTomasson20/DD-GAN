@@ -2,8 +2,8 @@ name: generate-docs
 on: [push, pull_request]
 
 jobs:
-  # This job installs dependencies and runs flake8
-  run-lint:
+  # This job generates documentation
+  generate-docs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -13,7 +13,7 @@ jobs:
       with:
         docs-folder: "docs/"
         pre-build-command: "apt-get update -y && apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended"
-        build-command: "make latexpdf"
+        build-command: "make latex"
 
     - name: move docs
       run: |

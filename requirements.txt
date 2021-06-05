@@ -3,4 +3,3 @@ tensorflow
 sklearn
 flake8
 pytest-cov
-docs/make.bat
