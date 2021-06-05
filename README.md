@@ -47,15 +47,7 @@
 
 ## About The Project
 
-The LossLandscape research group presents to you a classifier that identifies chest x-ray images of healthy patients, patients that have lung-opacity, pneumonia or covid-19 using machine learning. 
-
-Features:
-
-* Ensemble method that makes composite model out of three machine learning networks
-* Wide range of possible models to implement(ResNet, GoogLeNet, SqueezeNet etc.)
-* Accurate results.
-* Elegant visualization showing functionality using wandb.ai.
-* Stable and continuous software maintenance using Github Actions. 
+This project contains an intuitive library for interacting with a domain decomposition predictive GAN. This draws on ideas from recent research on [domain decomposition methods for reduced order modelling](https://www.sciencedirect.com/science/article/pii/S0045793019300350) and [predictive GANs](https://arxiv.org/abs/2105.07729). It also contains some test examples. 
 
 <!-- GETTING STARTED -->
 
