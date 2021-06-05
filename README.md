@@ -1,4 +1,3 @@
 # DD-GAN
 
-[![codecov.io](https://codecov.io/github/acse-jat20/DD-GAN/coverage.svg?branch=main)]
-(https://codecov.io/github/acse-jat20/DD-GAN?branch=main)
+[![codecov](https://codecov.io/gh/acse-jat20/DD-GAN/branch/main/graph/badge.svg?token=1LU7UG5OF9)](https://codecov.io/gh/acse-jat20/DD-GAN)
