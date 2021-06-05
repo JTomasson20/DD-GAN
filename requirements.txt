@@ -2,3 +2,4 @@ numpy >= 1.13.0
 tensorflow
 sklearn
 flake8
+pytest-cov
