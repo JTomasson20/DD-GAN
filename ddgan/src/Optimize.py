@@ -1,5 +1,4 @@
-
-
+__all__ = []
 
 @tf.function
 def opt_latent_var(latent_var, output):   #main input optimization loop, optimizes input1 (a tf.variable) based on mse between known real output and generator output

@@ -2,6 +2,8 @@
 Some ownership comments
 """
 
+__all__ = []
+
 import tensorflow as tf
 import keras
 import numpy as np
