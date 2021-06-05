@@ -22,6 +22,8 @@ jobs:
     - name: commit files
       run: |
         git add docs
+        git config --global user.email "zrw20@ic.ac.uk"
+        git config --global user.name "acse-zrw20"
         git commit -m "automatically added docs"
 
     - name: Push changes
