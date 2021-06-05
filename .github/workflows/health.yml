@@ -23,7 +23,6 @@ jobs:
     # Run flake8 linter
     - name: run flake8
       run: |
-        ls
         python -m flake8 .
 
   # This job installs dependencies and runs tests
