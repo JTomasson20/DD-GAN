@@ -3,3 +3,6 @@
 coverage*
 *__pycache__*
 *egg*
+docs/make.bat
+docs/Makefile
+docs/build
