@@ -10,6 +10,8 @@ Welcome to DD-GAN's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+.. automodule:: ddgan
+
 
 Indices and tables
 ==================
