@@ -5,3 +5,4 @@ coverage*
 *egg*
 docs/build
 *events.out*
+*.ipynb_checkpoints*
