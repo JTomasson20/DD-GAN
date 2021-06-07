@@ -8,60 +8,52 @@ import tensorflow as tf
 import numpy as np
 import sklearn
 import datetime
+from dataclasses import dataclass
 
 
+@dataclass
 class GAN:
     """
     Class for the predictive GAN
     """
+    # Keyword argument definitions
 
-    def __init__(self) -> None:
-        """
-        Predictive GAN class constructor
-        """
+    # Number of consecutive timesteps
+    nsteps: int = 5
+    # Number of reduced variables
+    ndims: int = 5
+    lmbda: int = 10
+    n_critic: int = 5
+    batch_size: int = 20  # 32
+    batches: int = 10  # 900
 
-        # Keyword argument definitions
-        self.kwargs = None
-        self.nsteps = None
-        self.ndims = None
-        self.lmbda = None
-        self.n_critic = None
-        self.batch_size = None  # 32
-        self.batches = None  # 900
+    # Objects
+    generator = None
+    discriminator = None
+    generator_opt = None
+    discriminator_opt = None
+    g_loss = None
+    d_loss = None
+    w_loss = None
 
-        # Method definitions
-        self.generator = tf.keras.Sequential()
-        self.discriminator = tf.keras.Sequential()
-        self.generator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                      beta_1=0, beta_2=0.9)
-        self.discriminator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                          beta_1=0, beta_2=0.9)
-        self.g_loss = tf.keras.metrics.Mean('g_loss', dtype=tf.float32)
-        self.d_loss = tf.keras.metrics.Mean('d_loss', dtype=tf.float32)
-        self.w_loss = tf.keras.metrics.Mean('w_loss', dtype=tf.float32)
+    # Other definitions
+    g_summary_writer = None
+    d_summary_writer = None
+    w_summary_writer = None
 
-        # Other definitions
-        self.g_summary_writer = None
-        self.d_summary_writer = None
-        self.w_summary_writer = None
-
-    def setup(self, kwargs) -> None:
+    def setup(self, **kwargs) -> None:
         """
         Setting up the neccecary values for the GAN class
 
         Args:
             kwargs (dict): key-value pairs of input variables
         """
-        self.kwargs = kwargs
-        # Number of consecutive timesteps
-        self.nsteps = kwargs.pop("nsteps", 5)
-        # Number of reduced variables
-        self.ndims = kwargs.pop("ndims", 5)
-
-        self.lmbda = kwargs.pop("lambda", 10)
-        self.n_critic = kwargs.pop("n_critic", 5)
-        self.batch_size = kwargs.pop("batch_size", 20)  # 32
-        self.batches = kwargs.pop("batches", 10)  # 900
+        self.generator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
+                                                      beta_1=0,
+                                                      beta_2=0.9)
+        self.discriminator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
+                                                          beta_1=0,
+                                                          beta_2=0.9)
         self.make_logs()
         self.make_GAN()
 
@@ -69,6 +61,10 @@ class GAN:
         """
         Logging utility
         """
+        self.g_loss = tf.keras.metrics.Mean('g_loss', dtype=tf.float32)
+        self.d_loss = tf.keras.metrics.Mean('d_loss', dtype=tf.float32)
+        self.w_loss = tf.keras.metrics.Mean('w_loss', dtype=tf.float32)
+
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         g_log_dir = './logs/gradient_tape/' + current_time + '/g'
         d_log_dir = './logs/gradient_tape/' + current_time + '/d'
@@ -78,10 +74,11 @@ class GAN:
         self.d_summary_writer = tf.summary.create_file_writer(d_log_dir)
         self.w_summary_writer = tf.summary.create_file_writer(w_log_dir)
 
-    def make_generator(self) -> None:  # nsteps):
+    def make_generator(self) -> None:
         """
         Create the generator network
         """
+        self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(5, input_shape=(5,),
                                                  activation='relu'))  # 5
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -97,6 +94,7 @@ class GAN:
         """
         Create the discriminator network
         """
+        self.discriminator = tf.keras.Sequential()
         self.discriminator.add(
             tf.keras.layers.Dense(5*self.nsteps,
                                   input_shape=(5*self.nsteps,)))
@@ -123,12 +121,12 @@ class GAN:
             saved_d1_dir = './saved_c_' + str(model_number)
             self.discriminator = tf.keras.models.load_model(saved_d1_dir)
 
-        except OSError:  # Add error type
+        except:  # Add error type
             print('making new generator and critic')
             self.make_generator()
             self.make_discriminator()
 
-    def discriminator_loss(self, d_real, d_fake) -> float:
+    def discriminator_loss(self, d_real: float, d_fake: float) -> float:
         """
         Calculate the loss for the discriminator as the sum of the reduced
         real and fake discriminator losses
@@ -143,14 +141,14 @@ class GAN:
         d_loss = tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
         return d_loss
 
-    def generator_loss(self, d_fake) -> float:
+    def generator_loss(self, d_fake: float) -> float:
         """
         Calculate the loss of the generator as the negative reduced fake
         discriminator loss. The generator has the task of fooling the
         discriminator.
 
         Args:
-            d_fake (float): Discriminator loss form classifying fake data
+            d_fake (float): Discriminator loss from classifying fake data
 
         Returns:
             float: Generator loss
@@ -158,15 +156,19 @@ class GAN:
         g_loss = -tf.reduce_mean(d_fake)
         return g_loss
 
-    def update_discriminator_loss(self, d_loss, fake, real) -> float:
+    def update_discriminator_loss(self,
+                                  d_loss: float,
+                                  fake: np.ndarray,
+                                  real: np.ndarray
+                                  ) -> float:
         """
         Update the discriminator loss
 
         Args:
             d_loss (float): Discriminator loss
             batch_size (int): Batch size
-            fake (np.array): Fake (generated) data
-            real (np.array): Real data sampled from input
+            fake (np.ndarray): Fake (generated) data
+            real (np.ndarray): Real data sampled from input
 
         Returns:
             Scalar: Loss with gradient penalty applied
@@ -185,7 +187,7 @@ class GAN:
 
         return d_loss + (self.lmbda*gradient_penalty)
 
-    def save_gan(self, epoch) -> None:
+    def save_gan(self, epoch: int) -> None:
         """
         Saving a trained model
 
@@ -197,7 +199,7 @@ class GAN:
         tf.keras.models.save_model(self.generator, saved_g1_dir)
         tf.keras.models.save_model(self.discriminator, saved_d1_dir)
 
-    def write_summary(self, epoch) -> None:
+    def write_summary(self, epoch: int) -> None:
         """
         Writing a summary from the current model state
 
@@ -230,13 +232,13 @@ class GAN:
               'w_loss: ', self.w_loss.result().numpy())
 
     @tf.function
-    def train_step(self, noise, real) -> None:
+    def train_step(self, noise: np.ndarray, real: np.ndarray) -> None:
         """
         Training the gan for a single step
 
         Args:
-            noise (np.array): gaussian noise input
-            real (np.array): actual values
+            noise (np.ndarray): gaussian noise input
+            real (np.ndarray): actual values
         """
         for i in range(self.n_critic):
             with tf.GradientTape() as t:
@@ -258,7 +260,6 @@ class GAN:
         # train generator
         with tf.GradientTape() as gen_tape:
             fake_images = self.generator(noise, training=True)
-            # training=False?
             d_fake = self.discriminator(fake_images, training=True)
             g_loss = self.generator_loss(d_fake)
 
@@ -274,18 +275,22 @@ class GAN:
         self.d_loss(new_d_loss)
         self.w_loss((-1)*(d_loss))  # wasserstein distance
 
-    def train(self, training_data, input_to_GAN, epochs) -> None:
+    def train(self, training_data: np.ndarray,
+              input_to_GAN: np.ndarray,
+              epochs: int
+              ) -> None:
         """
         Training the GAN
 
         Args:
-            training_data (np.array): Actual values for comparison
-            input_to_GAN (np.array): Random input values in the shape n x Dims
+            training_data (np.ndarray): Actual values for comparison
+            input_to_GAN(np.ndarray): Random input values in the shape n x Dims
             epochs (int): number of training epochs
         """
         losses = np.zeros((epochs, 4))
 
         for epoch in range(epochs):
+            print('epoch:', epoch)
             noise = input_to_GAN
             real_data = training_data  # X1.astype('int')
 
@@ -307,7 +312,6 @@ class GAN:
             for i in range(self.batch_size):
                 self.train_step(inpt1[i], xx1[i])
 
-            print('epoch:', epoch)
             losses[epoch, :] = [epoch+1,
                                 self.g_loss.result().numpy(),
                                 self.d_loss.result().numpy(),
@@ -328,17 +332,16 @@ class GAN:
                                            training_data,
                                            ndims_latent_input):
         """
-        Make and train a model to learn the hypersurfaces of the POD
-        coefficients
+        Make and train a model
 
         Args:
-            nPOD (int): Number of POD basis functions
-            input_to_GAN (np.ndarray): Data as input to GAN
-            training_data (np.ndarray): Training data
-            ndims_latent_input (int): Number of dimensions in the latent space
+            nPOD ([type]): [description]
+            input_to_GAN ([type]): [description]
+            training_data ([type]): [description]
+            ndims_latent_input ([type]): [description]
 
         Returns:
-            np.ndarray: array of predictions
+            [type]: [description]
         """
         # logs to follow losses on tensorboard
         self.make_logs()
@@ -366,17 +369,3 @@ class GAN:
             nPOD)
 
         return predictions_np
-
-
-# if __name__ == "__main__":
-# import time
-# import tensorflow as tf
-# import sklearn.utils
-# import sklearn.preprocessing
-# import datetime
-# import numpy as np
-
-# import os
-
-# gan = GAN
-# gan.setup
