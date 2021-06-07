@@ -123,7 +123,7 @@ class GAN:
             saved_d1_dir = './saved_c_' + str(model_number)
             self.discriminator = tf.keras.models.load_model(saved_d1_dir)
 
-        except:  # Add error type
+        except OSError:  # Add error type
             print('making new generator and critic')
             self.make_generator()
             self.make_discriminator()
@@ -328,16 +328,17 @@ class GAN:
                                            training_data,
                                            ndims_latent_input):
         """
-        Make and train a model
+        Make and train a model to learn the hypersurfaces of the POD
+        coefficients
 
         Args:
-            nPOD ([type]): [description]
-            input_to_GAN ([type]): [description]
-            training_data ([type]): [description]
-            ndims_latent_input ([type]): [description]
+            nPOD (int): Number of POD basis functions
+            input_to_GAN (np.ndarray): Data as input to GAN
+            training_data (np.ndarray): Training data
+            ndims_latent_input (int): Number of dimensions in the latent space
 
         Returns:
-            [type]: [description]
+            np.ndarray: array of predictions
         """
         # logs to follow losses on tensorboard
         self.make_logs()
