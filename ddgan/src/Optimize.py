@@ -1,36 +1,56 @@
+import tensorflow as tf
+from src.Train import GAN
+
 __all__ = []
 
+def mse_loss(inp, outp):
+    return tf.keras.losses.MeanSquaredError(inp, outp)
+
 @tf.function
-def opt_latent_var(latent_var, output):   #main input optimization loop, optimizes input1 (a tf.variable) based on mse between known real output and generator output
-    #inpt = input1
-    #rp = real_outpt
-    
-    #print('******** in opt_latent_var', latent_var.shape, output.shape) 
-    #tf.print('******** input1 before optimisation',input1.read_value())
+def opt_latent_var(gan, latent_var, output):
+    """
+    Main input optimization loop optimizing the latent variable
+    based on mse
+
+    Args:
+        gan (GAN object) : Generator-discriminator pair 
+        latent_var (tf.variable): Variable to be optimized
+        output (np.array): Actual output
+
+    Returns:
+        float: loss variable
+        float: norm of the latent variables
+    """
+    optimizer = tf.keras.optimizers.Adam(5e-3)
     
     with tf.GradientTape() as tape:
         tape.watch(latent_var)
-        r = generator(latent_var, training=False)  
-        loss1 = mse_loss(output, r[:,:nLatent*(nsteps - 1)])
+        r = gan.generator(latent_var, training=False)  
+        loss1 = mse_loss(output, r[:, :gan.ndims*(gan.nsteps - 1)])
 
     gradients = tape.gradient(loss1, latent_var)
     optimizer.apply_gradients(zip([gradients], [latent_var]))
 
     norm_latent_vars = tf.norm(latent_var)
 
-    ## clipping to within 2.3 is equivalent to 98%
-    #if norm_latent_vars > 2.3:
-    #    latent_var = 2.3 / norm_latent_vars * latent_var 
-    #    tf.print('clipping to ', tf.norm(latent_var)) 
-    
-    #tf.print('******** input1 after optimisation',input1.read_value())
-    #tf.print('******** inpt after optimisation  ',inpt.read_value())
+    # clipping to within 2.3 is equivalent to 98%
+    # if norm_latent_vars > 2.3:
+    #    latent_var = 2.3 / norm_latent_vars * latent_var
+    #    tf.print('clipping to ', tf.norm(latent_var))
+
     return loss1, norm_latent_vars
 
 
-
-def timestep_loop(real_outpt1, previous_latent_vars, attempts): #optimizes inputs - either new randonly initialised inputs, or inputs from previous timestep
-
+def timestep_loop(gan,
+                  real_outpt1,
+                  previous_latent_vars,
+                  attempts,
+                  optimizer_epochs=5000):
+    # What kind of an otherwordly mess is this function
+    """
+    Optimizes inputs either from a previous timestep or from
+    new randomly initialized inputs
+    """
     inputs = []
     losses = []
 
@@ -38,41 +58,36 @@ def timestep_loop(real_outpt1, previous_latent_vars, attempts): #optimizes input
     norm_latent_vars_list = []
 
     initial_latent_variables = previous_latent_vars.numpy()
-    
-    print('in train all but initial, type previous_latent_vars / op2', type(previous_latent_vars)) 
 
     for j in range(attempts):
-
         ip = previous_latent_vars
-        
-        for epoch in range(nepochs_optimiser):
-         
-            if epoch%100 == 0:   
-                print('******** epoch', epoch)            
+        for epoch in range(optimizer_epochs):
+            if epoch % 100 == 0:
+                print('Optimizer epoch: ', epoch)
             loss1, norm_latent_vars = opt_latent_var(ip, real_outpt1)
 
             loss_list.append(loss1)
             norm_latent_vars_list.append(norm_latent_vars)
 
-        r = generator(ip, training=False)  
-        loss = mse_loss(real_outpt1, r[:,:nLatent*(nsteps - 1)])
+        r = gan.generator(ip, training=False)  
+        loss = mse_loss(real_outpt1, r[:, :nLatent*(nsteps - 1)])
 
         inputt = ip.numpy()
         loss_input = loss.numpy()
 
-        #inputs.append(inputt)
-        #losses.append(loss_input)
+        inputs.append(inputt)
+        losses.append(loss_input)
 
 
-    #initial_inputs = np.array(inputs)
-    #loss_for_initial_inputs = np.array(losses)
-    #initial_inputs = inputt
-    #loss_for_initial_inputs = loss_input
+    # initial_inputs = np.array(inputs)
+    # loss_for_initial_inputs = np.array(losses)
+    # initial_inputs = inputt
+    # loss_for_initial_inputs = loss_input
 
-    #min_loss = np.argmin(loss_for_initial_inputs)
-    #best_ipt = initial_inputs[min_loss]
+    # min_loss = np.argmin(loss_for_initial_inputs)
+    # best_ipt = initial_inputs[min_loss]
 
-    return ip, loss_list, inputt, initial_latent_variables, norm_latent_vars_list #best_ipt
+    return ip, loss_list, inputt, initial_latent_variables, norm_latent_vars_list
 
 
 def timesteps(initial, inn, iterations):  #timestep prediction

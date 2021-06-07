@@ -1,0 +1,16 @@
+name: DD-GAN
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python>=3.6
+  - pip
+  - flake8
+  - pytest
+  - ipython
+  - numpy
+  - keras==2.2.4
+  - pandas
+  - pip:
+    - tensorflow-gpu==1.10.0
+    - scikit-learn
