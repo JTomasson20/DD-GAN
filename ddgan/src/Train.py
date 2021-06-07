@@ -2,7 +2,7 @@
 Jón Atli Tómasson and Zef Wolffs
 """
 
-__all__ = []
+__all__ = ['GAN']
 
 import tensorflow as tf
 import numpy as np

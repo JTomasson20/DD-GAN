@@ -4,3 +4,4 @@ coverage*
 *__pycache__*
 *egg*
 docs/build
+*events.out*
