@@ -5,6 +5,10 @@ import pytest
 sys.path.insert(1, './../src/')
 from get_pod_coeffs import get_pod_coeffs # noqa F401
 
+"""
+Please execute module from within preprocessing/tests folder
+"""
+
 
 @pytest.fixture(autouse=True)
 def cleanup():
