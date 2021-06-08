@@ -27,6 +27,7 @@ class GAN:
     batch_size: int = 20  # 32
     batches: int = 10  # 900
     seed: int = 42
+    logs_location: str = './logs/gradient_tape/'
 
     # Objects
     generator = None
@@ -67,9 +68,9 @@ class GAN:
         self.w_loss = tf.keras.metrics.Mean('w_loss', dtype=tf.float32)
 
         current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        g_log_dir = './logs/gradient_tape/' + current_time + '/g'
-        d_log_dir = './logs/gradient_tape/' + current_time + '/d'
-        w_log_dir = './logs/gradient_tape/' + current_time + '/w'
+        g_log_dir = self.logs_location + current_time + '/g'
+        d_log_dir = self.logs_location + current_time + '/d'
+        w_log_dir = self.logs_location + current_time + '/w'
 
         self.g_summary_writer = tf.summary.create_file_writer(g_log_dir)
         self.d_summary_writer = tf.summary.create_file_writer(d_log_dir)
@@ -81,17 +82,17 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(5, input_shape=(5,),
-                                                 activation='relu'))  # 5
+                                                 activation='relu'))       # 5
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(10, activation='relu'))  # 10
-        self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='relu'))  # 25
+        self.generator.add(tf.keras.layers.Dense(10, activation='relu'))   # 10
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='tanh'))  # 25
+                           activation='relu'))                             # 25
+        self.generator.add(tf.keras.layers.BatchNormalization())
+        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
+                           activation='tanh'))                             # 25
 
-    def make_discriminator(self) -> None:  # nsteps):
+    def make_discriminator(self) -> None:
         """
         Create the discriminator network
         """
@@ -114,6 +115,7 @@ class GAN:
         Searching for an existing model, creating one from scratch
         if not found.
         """
+        # Expansion could include automatic detection
         try:
             print('looking for previous saved models')
             saved_g1_dir = './saved_g_' + str(model_number)
@@ -122,7 +124,8 @@ class GAN:
             saved_d1_dir = './saved_c_' + str(model_number)
             self.discriminator = tf.keras.models.load_model(saved_d1_dir)
 
-        except:  # Add error type
+        # Add error type
+        except:
             print('making new generator and critic')
             self.make_generator()
             self.make_discriminator()

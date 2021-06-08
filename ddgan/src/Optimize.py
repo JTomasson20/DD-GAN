@@ -10,7 +10,9 @@ from dataclasses import dataclass
 @dataclass
 class Optimize:
     """
-    Finding and orienting within the latent space
+    Finding and orienting within the latent space. Functions are
+    in the order innermost -> outermost. The function therefore most
+    often called appears first
     """
     initial: int = None
     inn: int = None
@@ -112,7 +114,16 @@ class Optimize:
 
     def timesteps(self, initial, inn, iterations):
         """
-        Timestep prediction
+        Outermost loop. Collecting the predicted points and
+        iterating through predictions
+
+        Args:
+            initial (np.ndarray): Initial value array
+            inn (np.ndarray): Gan input array
+            iterations (int): Number of predicted points
+
+        Returns:
+            np.ndarray: Predicted points
         """
         the_input = tf.convert_to_tensor(inn)
         flds = tf.convert_to_tensor(initial)
