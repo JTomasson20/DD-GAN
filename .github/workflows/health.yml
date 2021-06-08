@@ -73,4 +73,5 @@ jobs:
     # Run tests
     - name: run tests
       run: |
+        ls
         python -m pytest ./preprocessing/tests/tests.py
