@@ -17,7 +17,7 @@
 
 <p align="center">
     <br />
-    <a href="https://github.com/acse-jat20/DD-GAN/docs"><strong>Explore the docs»</strong></a>
+    <a href="https://github.com/acse-jat20/DD-GAN/blob/main/docs/docs.pdf"><strong>Explore the docs»</strong></a>
     <br />
     <br />
     <a href="https://github.com/acse-jat20/DD-GAN/issues">Report Bug</a>
