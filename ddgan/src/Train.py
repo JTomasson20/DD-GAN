@@ -26,6 +26,7 @@ class GAN:
     n_critic: int = 5
     batch_size: int = 20  # 32
     batches: int = 10  # 900
+    seed: int = 42
 
     # Objects
     generator = None
