@@ -125,7 +125,7 @@ class GAN:
             self.discriminator = tf.keras.models.load_model(saved_d1_dir)
 
         # Add error type
-        except:
+        except OSError:
             print('making new generator and critic')
             self.make_generator()
             self.make_discriminator()

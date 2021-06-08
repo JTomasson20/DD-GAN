@@ -138,7 +138,8 @@ class Optimize:
         for i in range(iterations):
             print('Time step: \t', i)
 
-            updated, loss_opt, converged[i, :], latent[i, :], norm_latent = self.timestep_loop(the_input, current, 1)
+            updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
+                self.timestep_loop(the_input, current, 1)
             current = updated
 
             losses_from_opt.append(loss_opt)
