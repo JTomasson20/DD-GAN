@@ -4,11 +4,17 @@ In this folder we use some legacy code for preprocessing. This only has to be ra
 
 ### Usage
 
-to compile the fortran library for python to use (u2r is the library):
+First thing to do is to descend into preprocessing source directory:
+
+```cd preprocessing/src```
+
+To compile the fortran library for python to use (u2r is the library):
+
 ```python2 -m numpy.f2py -c unstruc_mesh_2_regular_grid_new.f90 -m u2r```
 
-to run the interpolation test:
-```python2 interpolation_test.py```
+To get POD coefficients execute the following to see the usage of the script that wraps Fortran:
+
+```python2 get_pod_coeffs.py -h```
 
 
 ### Some common problems and fixes:

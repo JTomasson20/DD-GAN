@@ -20,10 +20,10 @@ jobs:
         pip install pytest
         pip install -r requirements.txt
 
-    # Run flake8 linter
+    # Run flake8 linter, exclude vtktools as it is not self made
     - name: run flake8
       run: |
-        python -m flake8 .
+        python -m flake8 . --exclude=*vtktools.py
 
   # This job installs dependencies and runs tests
   run-tests-codecov:
