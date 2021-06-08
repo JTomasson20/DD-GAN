@@ -4,9 +4,13 @@ In this folder we use some legacy code for preprocessing. This only has to be ra
 
 ### Usage
 
-First thing to do is to descend into preprocessing source directory:
+First thing to do is to descend into preprocessing source directory
 
 ```cd preprocessing/src```
+
+and install the requirements
+
+```pip install -r requirements.txt```
 
 To compile the fortran library for python to use (u2r is the library):
 
