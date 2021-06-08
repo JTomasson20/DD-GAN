@@ -352,7 +352,7 @@ class GAN:
 
         print('beginning training')
         epochs = 500
-        self.train(self, training_data, input_to_GAN, epochs)
+        self.train(training_data, input_to_GAN, epochs)
         print('ending training')
 
         # generate some random inputs and put through generator
