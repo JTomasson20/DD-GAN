@@ -31,14 +31,14 @@ def test_gan_setup(ddgan):
     kwargs = {
         "nsteps": 5,
         "ndims": 5,
-        "lambda": 10,
+        "lmbda": 10,
         "n_critic": 5,
         "batches": 10,
         "batch_size": 20
         }
 
     gan = ddgan.GAN()
-    gan.setup(kwargs)
+    gan.setup(**kwargs)
 
     # Making sure all of the dictionary is correctly set on the class
     for att_name, att in kwargs.items():
