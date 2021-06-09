@@ -7,7 +7,7 @@ __all__ = ['Optimize']
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class Optimize:
     """
     Finding and orienting within the latent space. Functions are
@@ -21,12 +21,6 @@ class Optimize:
     gan: GAN = None
 
     optimizer = tf.keras.optimizers.Adam(5e-3)
-
-    def mse_loss(inp, outp):
-        """
-        Wrapper for mean square error loss of inp v outp
-        """
-        return tf.keras.losses.MeanSquaredError(inp, outp)
 
     @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
@@ -46,7 +40,7 @@ class Optimize:
         with tf.GradientTape() as tape:
             tape.watch(latent_var)
             r = self.gan.generator(latent_var, training=False)
-            loss = self.mse_loss(output,
+            loss = tf.keras.losses.MeanSquaredError(output,
                                  r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
 
         gradients = tape.gradient(loss, latent_var)

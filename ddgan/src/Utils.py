@@ -69,3 +69,11 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
     gan.g_loss(g_loss)
     gan.d_loss(new_d_loss)
     gan.w_loss((-1)*(d_loss))  # wasserstein distance
+
+
+    
+def mse_loss(inp, outp):
+    """
+    Wrapper for mean square error loss of inp v outp
+    """
+    return tf.keras.losses.MeanSquaredError(inp, outp)
