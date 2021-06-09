@@ -43,7 +43,7 @@ class GAN:
     g_summary_writer = None
     d_summary_writer = None
     w_summary_writer = None
-    
+
     initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05,
                                                      seed=seed)
 
@@ -85,18 +85,21 @@ class GAN:
         Create the generator network
         """
         self.generator = tf.keras.Sequential()
-        self.generator.add(tf.keras.layers.Dense(5, input_shape=(5,),
-                                                 activation='relu',
-                                                 kernel_initializer=self.initializer))      # 5
+        self.generator.add(
+            tf.keras.layers.Dense(5, input_shape=(5,), activation='relu',
+                                  kernel_initializer=self.initializer))  # 5
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(10, activation='relu',
-                                                kernel_initializer=self.initializer))   # 10
-        self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='relu', kernel_initializer=self.initializer))                             # 25
+        self.generator.add(
+            tf.keras.layers.Dense(10, activation='relu',
+                                  kernel_initializer=self.initializer))  # 10
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='tanh', kernel_initializer=self.initializer))                             # 25
+                           activation='relu',
+                           kernel_initializer=self.initializer))  # 25
+        self.generator.add(tf.keras.layers.BatchNormalization())
+        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
+                           activation='tanh',
+                           kernel_initializer=self.initializer))  # 25
 
     def make_discriminator(self) -> None:
         """
@@ -105,16 +108,20 @@ class GAN:
         self.discriminator = tf.keras.Sequential()
         self.discriminator.add(
             tf.keras.layers.Dense(5*self.nsteps,
-                                  input_shape=(5*self.nsteps,), kernel_initializer=self.initializer))
+                                  input_shape=(5*self.nsteps,),
+                                  kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
-        self.discriminator.add(tf.keras.layers.Dense(10, kernel_initializer=self.initializer))
+        self.discriminator.add(
+            tf.keras.layers.Dense(10, kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(tf.keras.layers.Dense(5, kernel_initializer=self.initializer))
+        self.discriminator.add(
+            tf.keras.layers.Dense(5, kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Flatten())
-        self.discriminator.add(tf.keras.layers.Dense(1, kernel_initializer=self.initializer))
+        self.discriminator.add(
+            tf.keras.layers.Dense(1, kernel_initializer=self.initializer))
 
     def make_GAN(self, model_number=1) -> None:
         """
@@ -165,37 +172,6 @@ class GAN:
         """
         g_loss = -tf.reduce_mean(d_fake)
         return g_loss
-
-    # def update_discriminator_loss(self,
-    #                               d_loss: float,
-    #                               fake: np.ndarray,
-    #                               real: np.ndarray
-    #                               ) -> float:
-    #     """
-    #     Update the discriminator loss
-
-    #     Args:
-    #         d_loss (float): Discriminator loss
-    #         batch_size (int): Batch size
-    #         fake (np.ndarray): Fake (generated) data
-    #         real (np.ndarray): Real data sampled from input
-
-    #     Returns:
-    #         Scalar: Loss with gradient penalty applied
-    #     """
-    #     with tf.GradientTape() as t:
-    #         epsilon = tf.random.uniform(shape=[self.batch_size, 1], minval=0.,
-    #                                     maxval=1.)
-    #         interpolated = real + epsilon * (fake - real)
-    #         t.watch(interpolated)
-    #         c_inter = self.discriminator(interpolated, training=True)
-
-    #     grad_interpolated = t.gradient(c_inter, interpolated)
-    #     slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated) + 1e-12,
-    #                                    axis=[1]))
-    #     gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
-
-    #     return d_loss + (self.lmbda*gradient_penalty)
 
     def save_gan(self, epoch: int) -> None:
         """
@@ -277,7 +253,7 @@ class GAN:
             for i in range(self.batches):
                 train_step(self, inpt1[i], xx1[i])
 
-            print('gen loss', self.g_loss.result().numpy(), 'd loss', self.d_loss.result().numpy(), 'w_loss' , self.w_loss.result().numpy())
+            self.print_loss()
 
             losses[epoch, :] = [epoch+1,
                                 self.g_loss.result().numpy(),

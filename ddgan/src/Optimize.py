@@ -19,6 +19,7 @@ class Optimize:
     iterations: int = None
     optimizer_epochs: int = None
     gan: GAN = None
+    mse = tf.keras.losses.MeanSquaredError()
 
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
@@ -40,8 +41,9 @@ class Optimize:
         with tf.GradientTape() as tape:
             tape.watch(latent_var)
             r = self.gan.generator(latent_var, training=False)
-            loss = tf.keras.losses.MeanSquaredError(output,
-                                 r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
+
+            loss = self.mse(output,
+                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
 
         gradients = tape.gradient(loss, latent_var)
         self.optimizer.apply_gradients(zip([gradients], [latent_var]))
@@ -96,8 +98,8 @@ class Optimize:
                 norm_latent_list.append(norm_latent)
 
             r = self.gan.generator(ip, training=False)
-            loss = self.mse_loss(real_output,
-                                 r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
+            loss = self.mse(real_output,
+                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
 
             ip_np = ip.numpy()
 
@@ -145,7 +147,7 @@ class Optimize:
             next_input = prediction[:, self.gan.ndims:]
 
             # Last image out of 5 is added to list of compressed vars
-            new_result = prediction[:, self.gan.ndims*(self.gan.nstep - 1):]
+            new_result = prediction[:, self.gan.ndims*(self.gan.nsteps - 1):]
             flds = tf.concat([flds, new_result], 0)
             the_input = next_input.numpy()
 

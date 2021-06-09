@@ -30,18 +30,20 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
         with tf.GradientTape() as t:
             with tf.GradientTape() as t1:
                 fake = gan.generator(noise, training=True)
-                epsilon = tf.random.uniform(shape=[gan.batch_size, 1], minval=0.,
+                epsilon = tf.random.uniform(shape=[gan.batch_size, 1],
+                                            minval=0.,
                                             maxval=1.)
 
                 interpolated = real + epsilon * (fake - real)
                 t1.watch(interpolated)
-                c_inter = gan.discriminator(interpolated, training=True)                    
+                c_inter = gan.discriminator(interpolated, training=True)
                 d_real = gan.discriminator(real, training=True)
                 d_fake = gan.discriminator(fake, training=True)
                 d_loss = gan.discriminator_loss(d_real, d_fake)
 
             grad_interpolated = t1.gradient(c_inter, interpolated)
-            slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated) + 1e-12,
+            slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated)
+                                           + 1e-12,
                                            axis=[1]))
             gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
             new_d_loss = d_loss + (gan.lmbda*gradient_penalty)
@@ -69,11 +71,3 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
     gan.g_loss(g_loss)
     gan.d_loss(new_d_loss)
     gan.w_loss((-1)*(d_loss))  # wasserstein distance
-
-
-    
-def mse_loss(inp, outp):
-    """
-    Wrapper for mean square error loss of inp v outp
-    """
-    return tf.keras.losses.MeanSquaredError(inp, outp)
