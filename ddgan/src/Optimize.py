@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from src.Train import GAN
+from .Train import GAN
 
-__all__ = []
+__all__ = ['Optimize']
 
 from dataclasses import dataclass
 
@@ -18,7 +18,7 @@ class Optimize:
     inn: int = None
     iterations: int = None
     optimizer_epochs: int = None
-    gan: GAN = gan
+    gan: GAN = None
 
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
@@ -29,7 +29,7 @@ class Optimize:
         return tf.keras.losses.MeanSquaredError(inp, outp)
 
     @tf.function
-    def opt_latent_var(self, latent_var: tf.variable, output: np.ndarray):
+    def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
         """
         Main input optimization loop optimizing the latent variable
         based on mse

@@ -43,7 +43,10 @@ class GAN:
     g_summary_writer = None
     d_summary_writer = None
     w_summary_writer = None
-    #def __hash
+    
+    initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05,
+                                                     seed=seed)
+
     def setup(self, **kwargs) -> None:
         """
         Setting up the neccecary values for the GAN class
@@ -83,15 +86,17 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(5, input_shape=(5,),
-                                                 activation='relu'))       # 5
+                                                 activation='relu',
+                                                 kernel_initializer=self.initializer))      # 5
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(10, activation='relu'))   # 10
+        self.generator.add(tf.keras.layers.Dense(10, activation='relu',
+                                                kernel_initializer=self.initializer))   # 10
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='relu'))                             # 25
+                           activation='relu', kernel_initializer=self.initializer))                             # 25
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='tanh'))                             # 25
+                           activation='tanh', kernel_initializer=self.initializer))                             # 25
 
     def make_discriminator(self) -> None:
         """
@@ -100,16 +105,16 @@ class GAN:
         self.discriminator = tf.keras.Sequential()
         self.discriminator.add(
             tf.keras.layers.Dense(5*self.nsteps,
-                                  input_shape=(5*self.nsteps,)))
+                                  input_shape=(5*self.nsteps,), kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
-        self.discriminator.add(tf.keras.layers.Dense(10))
+        self.discriminator.add(tf.keras.layers.Dense(10, kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(tf.keras.layers.Dense(5))
+        self.discriminator.add(tf.keras.layers.Dense(5, kernel_initializer=self.initializer))
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Flatten())
-        self.discriminator.add(tf.keras.layers.Dense(1))
+        self.discriminator.add(tf.keras.layers.Dense(1, kernel_initializer=self.initializer))
 
     def make_GAN(self, model_number=1) -> None:
         """
@@ -268,8 +273,6 @@ class GAN:
             inpt1 = noise.reshape(self.batches,
                                   self.batch_size,
                                   self.ndims)
-            
-            print(self.generator.layers[0].weights)
 
             for i in range(self.batches):
                 train_step(self, inpt1[i], xx1[i])
@@ -311,7 +314,7 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        epochs = 500
+        epochs = 20
         self.train(training_data, input_to_GAN, epochs)
         print('ending training')
 
