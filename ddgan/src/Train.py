@@ -9,9 +9,10 @@ import numpy as np
 import sklearn
 import datetime
 from dataclasses import dataclass
+from ddgan.src.Utils import train_step
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class GAN:
     """
     Class for the predictive GAN
@@ -26,7 +27,7 @@ class GAN:
     n_critic: int = 5
     batch_size: int = 20  # 32
     batches: int = 10  # 900
-    seed: int = 42
+    seed: int = 143
     logs_location: str = './logs/gradient_tape/'
 
     # Objects
@@ -42,7 +43,7 @@ class GAN:
     g_summary_writer = None
     d_summary_writer = None
     w_summary_writer = None
-
+    #def __hash
     def setup(self, **kwargs) -> None:
         """
         Setting up the neccecary values for the GAN class
@@ -160,36 +161,36 @@ class GAN:
         g_loss = -tf.reduce_mean(d_fake)
         return g_loss
 
-    def update_discriminator_loss(self,
-                                  d_loss: float,
-                                  fake: np.ndarray,
-                                  real: np.ndarray
-                                  ) -> float:
-        """
-        Update the discriminator loss
+    # def update_discriminator_loss(self,
+    #                               d_loss: float,
+    #                               fake: np.ndarray,
+    #                               real: np.ndarray
+    #                               ) -> float:
+    #     """
+    #     Update the discriminator loss
 
-        Args:
-            d_loss (float): Discriminator loss
-            batch_size (int): Batch size
-            fake (np.ndarray): Fake (generated) data
-            real (np.ndarray): Real data sampled from input
+    #     Args:
+    #         d_loss (float): Discriminator loss
+    #         batch_size (int): Batch size
+    #         fake (np.ndarray): Fake (generated) data
+    #         real (np.ndarray): Real data sampled from input
 
-        Returns:
-            Scalar: Loss with gradient penalty applied
-        """
-        with tf.GradientTape() as t:
-            epsilon = tf.random.uniform(shape=[self.batch_size, 1], minval=0.,
-                                        maxval=1.)
-            interpolated = real + epsilon * (fake - real)
-            t.watch(interpolated)
-            c_inter = self.discriminator(interpolated, training=True)
+    #     Returns:
+    #         Scalar: Loss with gradient penalty applied
+    #     """
+    #     with tf.GradientTape() as t:
+    #         epsilon = tf.random.uniform(shape=[self.batch_size, 1], minval=0.,
+    #                                     maxval=1.)
+    #         interpolated = real + epsilon * (fake - real)
+    #         t.watch(interpolated)
+    #         c_inter = self.discriminator(interpolated, training=True)
 
-        grad_interpolated = t.gradient(c_inter, interpolated)
-        slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated) + 1e-12,
-                                       axis=[1]))
-        gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
+    #     grad_interpolated = t.gradient(c_inter, interpolated)
+    #     slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated) + 1e-12,
+    #                                    axis=[1]))
+    #     gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
 
-        return d_loss + (self.lmbda*gradient_penalty)
+    #     return d_loss + (self.lmbda*gradient_penalty)
 
     def save_gan(self, epoch: int) -> None:
         """
@@ -235,50 +236,6 @@ class GAN:
               'd loss: ', self.d_loss.result().numpy(),
               'w_loss: ', self.w_loss.result().numpy())
 
-    @tf.function
-    def train_step(self, noise: np.ndarray, real: np.ndarray) -> None:
-        """
-        Training the gan for a single step
-
-        Args:
-            noise (np.ndarray): gaussian noise input
-            real (np.ndarray): actual values
-        """
-        for i in range(self.n_critic):
-            with tf.GradientTape() as t:
-                fake = self.generator(noise, training=True)
-                d_real = self.discriminator(real, training=True)
-                d_fake = self.discriminator(fake, training=True)
-                d_loss = self.discriminator_loss(d_real, d_fake)
-
-            new_d_loss = self.update_discriminator_loss(d_loss,
-                                                        self.batch_size,
-                                                        fake,
-                                                        real)
-            c_grad = t.gradient(new_d_loss,
-                                self.discriminator.trainable_variables)
-            self.discriminator_opt.apply_gradients(zip(c_grad,
-                                                       self.discriminator.
-                                                       trainable_variables))
-
-        # train generator
-        with tf.GradientTape() as gen_tape:
-            fake_images = self.generator(noise, training=True)
-            d_fake = self.discriminator(fake_images, training=True)
-            g_loss = self.generator_loss(d_fake)
-
-        gen_grads = gen_tape.gradient(g_loss,
-                                      self.generator.trainable_variables)
-
-        self.generator_opt.apply_gradients(zip(gen_grads,
-                                               self.generator.
-                                               trainable_variables))
-
-        # for tensorboard
-        self.g_loss(g_loss)
-        self.d_loss(new_d_loss)
-        self.w_loss((-1)*(d_loss))  # wasserstein distance
-
     def train(self, training_data: np.ndarray,
               input_to_GAN: np.ndarray,
               epochs: int
@@ -313,8 +270,10 @@ class GAN:
                                   self.batch_size,
                                   self.ndims)
 
-            for i in range(self.batch_size):
-                self.train_step(inpt1[i], xx1[i])
+            for i in range(self.batches):
+                train_step(self, inpt1[i], xx1[i])
+
+            print('gen loss', self.g_loss.result().numpy(), 'd loss', self.d_loss.result().numpy(), 'w_loss' , self.w_loss.result().numpy())
 
             losses[epoch, :] = [epoch+1,
                                 self.g_loss.result().numpy(),
