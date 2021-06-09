@@ -31,27 +31,26 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
             with tf.GradientTape() as t1:
                 fake = gan.generator(noise, training=True)
                 epsilon = tf.random.uniform(shape=[gan.batch_size, 1], minval=0.,
-                                        maxval=1.)
+                                            maxval=1.)
 
                 interpolated = real + epsilon * (fake - real)
                 t1.watch(interpolated)
-                c_inter = gan.discriminator(interpolated, training=True)
-                    
+                c_inter = gan.discriminator(interpolated, training=True)                    
                 d_real = gan.discriminator(real, training=True)
                 d_fake = gan.discriminator(fake, training=True)
                 d_loss = gan.discriminator_loss(d_real, d_fake)
 
             grad_interpolated = t1.gradient(c_inter, interpolated)
             slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated) + 1e-12,
-                                            axis=[1]))
+                                           axis=[1]))
             gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
             new_d_loss = d_loss + (gan.lmbda*gradient_penalty)
 
         c_grad = t.gradient(new_d_loss,
                             gan.discriminator.trainable_variables)
         gan.discriminator_opt.apply_gradients(zip(c_grad,
-                                                    gan.discriminator.
-                                                    trainable_variables))
+                                                  gan.discriminator.
+                                                  trainable_variables))
 
     # train generator
     with tf.GradientTape() as gen_tape:
@@ -60,11 +59,11 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
         g_loss = gan.generator_loss(d_fake)
 
     gen_grads = gen_tape.gradient(g_loss,
-                                    gan.generator.trainable_variables)
+                                  gan.generator.trainable_variables)
 
     gan.generator_opt.apply_gradients(zip(gen_grads,
-                                            gan.generator.
-                                            trainable_variables))
+                                          gan.generator.
+                                          trainable_variables))
 
     # for tensorboard
     gan.g_loss(g_loss)

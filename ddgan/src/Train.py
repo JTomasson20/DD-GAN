@@ -261,7 +261,6 @@ class GAN:
 
             # shuffle each epoch
             real_data, noise = sklearn.utils.shuffle(real_data, noise)
-
             xx1 = real_data.reshape(self.batches,
                                     self.batch_size,
                                     self.ndims*self.nsteps)
@@ -269,6 +268,8 @@ class GAN:
             inpt1 = noise.reshape(self.batches,
                                   self.batch_size,
                                   self.ndims)
+            
+            print(self.generator.layers[0].weights)
 
             for i in range(self.batches):
                 train_step(self, inpt1[i], xx1[i])
