@@ -47,7 +47,7 @@ class GAN:
     initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05,
                                                      seed=seed)
 
-    def setup(self, **kwargs) -> None:
+    def setup(self) -> None:
         """
         Setting up the neccecary values for the GAN class
 
@@ -273,7 +273,8 @@ class GAN:
                                            nPOD,
                                            input_to_GAN,
                                            training_data,
-                                           ndims_latent_input):
+                                           ndims_latent_input,
+                                           epochs=100):
         """
         Make and train a model
 
@@ -290,7 +291,6 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        epochs = 20
         self.train(training_data, input_to_GAN, epochs)
         print('ending training')
 
