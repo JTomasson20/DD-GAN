@@ -20,7 +20,7 @@ class Optimize:
     npredictions: int = 20
     optimizer_epochs: int = 5000
     gan: GAN = None
-    
+
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
@@ -160,6 +160,17 @@ class Optimize:
         return flds
 
     def predict(self, training_data, scaling=None, *args, **kwargs):
+        """
+        Communicator with the optimization scripts
+
+        Args:
+            training_data (np.ndarray): Data used in the training of the GAN
+            scaling (sklearn.preprocessing.MinMaxScaler, optional): Scaling
+             used to normalize training data. Defaults to None.
+
+        Returns:
+            np.ndarray: predictions
+        """
         assert self.gan is not None, "Please initialize using an active GAN"
 
         inn = training_data[self.start_from,
@@ -176,4 +187,4 @@ class Optimize:
         if scaling is not None:
             flds = scaling.inverse_transform(flds).T
 
-        return flds 
+        return flds
