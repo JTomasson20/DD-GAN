@@ -1,10 +1,9 @@
 import tensorflow as tf
 import numpy as np
 from .Train import GAN
+from dataclasses import dataclass
 
 __all__ = ['Optimize']
-
-from dataclasses import dataclass
 
 
 @dataclass(unsafe_hash=True)
@@ -14,13 +13,15 @@ class Optimize:
     in the order innermost -> outermost. The function therefore most
     often called appears first
     """
-    initial: int = None
-    inn: int = None
-    iterations: int = None
-    optimizer_epochs: int = None
+    start_from: int = 100
+    nPOD: int = 10
+    nLatent: int = nPOD
+    iterations: int = 10
+    npredictions: int = 20
+    optimizer_epochs: int = 5000
     gan: GAN = None
+    
     mse = tf.keras.losses.MeanSquaredError()
-
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
     @tf.function
@@ -157,3 +158,22 @@ class Optimize:
         np.savetxt('norm_latent_vars.csv', norm_latent_list, delimiter=',')
 
         return flds
+
+    def predict(self, training_data, scaling=None, *args, **kwargs):
+        assert self.gan is not None, "Please initialize using an active GAN"
+
+        inn = training_data[self.start_from,
+                            :(self.gan.nsteps-1)*self.nPOD
+                            ].reshape(1, (self.gan.nsteps - 1) * self.nLatent)
+
+        initial_comp = training_data[self.start_from,
+                                     :(self.gan.nsteps-1)*self.nPOD
+                                     ].reshape(
+                                         (self.gan.nsteps - 1),
+                                         self.nLatent)
+
+        flds = self.timesteps(initial_comp, inn, self.npredictions)
+        if scaling is not None:
+            flds = scaling.inverse_transform(flds).T
+
+        return flds 
