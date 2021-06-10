@@ -10,12 +10,27 @@ Please execute module from root of repository
 
 @fixture(scope='module')
 def ddgan():
+    """
+    Import ddgan module
+
+    Returns:
+        Module: The ddgan module
+    """
     import ddgan
     return ddgan
 
 
 @fixture(scope='module')
 def gan(ddgan):
+    """
+    Create GAN
+
+    Args:
+        ddgan (Module): The ddgan module
+
+    Returns:
+        GAN: The GAN
+    """
 
     kwargs = {
         "nsteps": 5,
@@ -36,6 +51,16 @@ def gan(ddgan):
 
 @fixture(scope='module')
 def optimize(gan, ddgan):
+    """
+    Create optimizer
+
+    Args:
+        gan (GAN): The GAN to optimize
+        ddgan (Module): The ddgan module
+
+    Returns:
+        Optimizer: The optimizer
+    """
     kwargs_opt = {
         "initial": 5,
         "inn": 10,
@@ -51,6 +76,15 @@ def optimize(gan, ddgan):
 
 @fixture(scope='module')
 def load_data(gan):
+    """
+    Load in data for running the GAN and Optimizer classes
+
+    Args:
+        gan (GAN): The GAN to load data for
+
+    Returns:
+        tuple: Variables related to input data
+    """
     csv_data = np.loadtxt('./data/processed/POD_coeffs_1_204_orig.csv',
                           delimiter=',')
     csv_data = np.float32(csv_data)
@@ -156,6 +190,17 @@ def test_train_gan(load_data, gan):
 
 
 def test_optimize_gan(gan, optimize, load_data):
+    """
+    Test the optimization part of the GAN. Again, We can't really
+    test for any exact values as changing one of any of the parameters of the
+    network would probably significantly influence the results. Therefore we do
+    multiple weaker tests.
+
+    Args:
+        gan (GAN): The GAN
+        optimize (Optimize): The optimizer
+        load_data (tupe): Variables related to input data
+    """
 
     training_data, _, nPOD, scaling = load_data
     nLatent = 5
