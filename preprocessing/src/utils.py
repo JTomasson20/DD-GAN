@@ -403,3 +403,21 @@ def get_original_data_from_vtu_files(snapshot_data_location,
         original_data.append(original)
 
     return original_data
+
+
+def convert_2d(subgrid_snapshots, shape, timesteps):
+    """
+    Utility to convert list of grids to list of 2d grids
+
+    Args:
+        subgrid_snapshots (List): List of subgrids
+        shape (Tuple): Shape of 2d grid, e.g. (nFields, nx, ny)
+        timesteps (Int): Number of timesteps
+
+    Returns:
+        List: List of converted subgrids
+    """
+    for i, subgrid_snapshot in enumerate(subgrid_snapshots):
+        subgrid_snapshots[i] = subgrid_snapshot.reshape((shape[0], shape[1],
+                                                         shape[2], timesteps))
+    return subgrid_snapshots
