@@ -62,8 +62,9 @@ def optimize(gan, ddgan):
         Optimizer: The optimizer
     """
     kwargs_opt = {
-        "initial": 5,
-        "inn": 10,
+        "nPOD": 5,
+        "nLatent": 5,
+        "npredictions": 20,
         "iterations": 20,
         "optimizer_epochs": 5000,
         "gan": gan
