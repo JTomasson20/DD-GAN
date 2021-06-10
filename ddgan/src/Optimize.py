@@ -159,7 +159,7 @@ class Optimize:
 
         return flds
 
-    def predict(self, training_data, scaling=None, *args, **kwargs):
+    def predict(self, training_data, scaling=None, **kwargs) -> np.ndarray:
         """
         Communicator with the optimization scripts
 
