@@ -282,7 +282,7 @@ THIS METHOD')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Module that wraps some \
-legacy code to interpolated data from  an unstructured mesh to a structured \
+legacy code to interpolate data from  an unstructured mesh to a structured \
 mesh and calculate POD coefficients from output. \n\n\
 Note that output will be saved under the folder specified by out_dir as \
 `pod_coeffs_field_<name of field>`. \
