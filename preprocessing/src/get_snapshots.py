@@ -140,6 +140,9 @@ def get_subgrid_snapshots(data_dir='./../../data/FPC_Re3900_2D_CG_old/',
 
             subgrid_snapshots.append(snapshots_per_grid)
 
+    np.save(out_dir + "/snaphsots_field_{}".format(field_names[iField]),
+            np.array(subgrid_snapshots))
+
     return subgrid_snapshots
 
 
