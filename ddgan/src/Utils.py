@@ -7,24 +7,26 @@ __all__ = ['set_seed', 'train_step']
 
 def set_seed(seed):
     """
-    Sets seed for numpy and tensorflow
+    Sets seed for random, numpy and tensorflow
 
     Args:
-        seed (int): random number generator seed
+        seed (int): Random number generator seed
     """
     random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
 
 
+# Clashes when trying to include this within the GAN class
 @tf.function
 def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
     """
     Training the gan for a single step
 
     Args:
-        noise (np.ndarray): gaussian noise input
-        real (np.ndarray): actual values
+        gan (GAN): Model object
+        noise (np.ndarray): Gaussian noise input
+        real (np.ndarray): Actual values
     """
     for i in range(gan.n_critic):
         with tf.GradientTape() as t:

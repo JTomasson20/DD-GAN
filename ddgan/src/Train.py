@@ -18,23 +18,23 @@ class GAN:
     Class for the predictive GAN
     """
     # Keyword argument definitions
-
-    # Number of consecutive timesteps
-    nsteps: int = 5
-    # Number of reduced variables
-    ndims: int = 5
+    nsteps: int = 5  # Consecutive timesteps
+    ndims: int = 5  # Reduced dimensions
     lmbda: int = 10
     n_critic: int = 5
     batch_size: int = 20  # 32
     batches: int = 10  # 900
     seed: int = 143
     logs_location: str = './logs/gradient_tape/'
+    model_number: int = 1
 
     # Objects
     generator = None
     discriminator = None
     generator_opt = None
     discriminator_opt = None
+
+    # Losses
     g_loss = None
     d_loss = None
     w_loss = None
@@ -65,7 +65,8 @@ class GAN:
 
     def make_logs(self) -> None:
         """
-        Logging utility
+        Printing summaries for generator, discriminator and w in
+        self.logs.location
         """
         self.g_loss = tf.keras.metrics.Mean('g_loss', dtype=tf.float32)
         self.d_loss = tf.keras.metrics.Mean('d_loss', dtype=tf.float32)
@@ -123,7 +124,7 @@ class GAN:
         self.discriminator.add(
             tf.keras.layers.Dense(1, kernel_initializer=self.initializer))
 
-    def make_GAN(self, model_number=1) -> None:
+    def make_GAN(self) -> None:
         """
         Searching for an existing model, creating one from scratch
         if not found.
@@ -131,13 +132,12 @@ class GAN:
         # Expansion could include automatic detection
         try:
             print('looking for previous saved models')
-            saved_g1_dir = './saved_g_' + str(model_number)
+            saved_g1_dir = './saved_g_' + str(self.model_number)
             self.generator = tf.keras.models.load_model(saved_g1_dir)
 
-            saved_d1_dir = './saved_c_' + str(model_number)
+            saved_d1_dir = './saved_c_' + str(self.model_number)
             self.discriminator = tf.keras.models.load_model(saved_d1_dir)
 
-        # Add error type
         except OSError:
             print('making new generator and critic')
             self.make_generator()
@@ -155,8 +155,7 @@ class GAN:
         Returns:
             float: Discriminator loss
         """
-        d_loss = tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
-        return d_loss
+        return tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
 
     def generator_loss(self, d_fake: float) -> float:
         """
@@ -170,8 +169,7 @@ class GAN:
         Returns:
             float: Generator loss
         """
-        g_loss = -tf.reduce_mean(d_fake)
-        return g_loss
+        return -tf.reduce_mean(d_fake)
 
     def save_gan(self, epoch: int) -> None:
         """
@@ -232,7 +230,7 @@ class GAN:
         losses = np.zeros((epochs, 4))
 
         for epoch in range(epochs):
-            print('epoch:', epoch)
+            print('epoch: \t', epoch)
             noise = input_to_GAN
             real_data = training_data  # X1.astype('int')
 
@@ -246,12 +244,12 @@ class GAN:
                                     self.batch_size,
                                     self.ndims*self.nsteps)
 
-            inpt1 = noise.reshape(self.batches,
-                                  self.batch_size,
-                                  self.ndims)
+            inpt = noise.reshape(self.batches,
+                                 self.batch_size,
+                                 self.ndims)
 
             for i in range(self.batches):
-                train_step(self, inpt1[i], xx1[i])
+                train_step(self, inpt[i], xx1[i])
 
             self.print_loss()
 
