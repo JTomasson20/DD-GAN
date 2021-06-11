@@ -417,7 +417,10 @@ def convert_2d(subgrid_snapshots, shape, timesteps):
     Returns:
         List: List of converted subgrids
     """
+    subgrid_snapshots_out = []
     for i, subgrid_snapshot in enumerate(subgrid_snapshots):
-        subgrid_snapshots[i] = subgrid_snapshot.reshape((shape[0], shape[1],
-                                                         shape[2], timesteps))
-    return subgrid_snapshots
+        subgrid_snapshots_out.append(subgrid_snapshot.reshape((shape[0],
+                                                               shape[1],
+                                                               shape[2],
+                                                               timesteps)))
+    return subgrid_snapshots_out
