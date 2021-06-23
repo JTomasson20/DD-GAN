@@ -151,10 +151,10 @@ if __name__ == '__main__':
 legacy code to interpolate data from  an unstructured mesh to a structured \
 mesh and calculate subgrid snapshots from output.")
     parser.add_argument('--data_dir', type=str, nargs='?',
-                        default="./../../data/FPC_Re3900_2D_CG_old/",
+                        default="./../../data/FPC_Re3900_2D_CG_new/",
                         help='Input data folder')
     parser.add_argument('--data_file_base', type=str, nargs='?',
-                        default="fpc_2D_Re3900_CG_",
+                        default="fpc_",
                         help='Base filename')
     parser.add_argument('--out_dir', type=str, nargs='?',
                         default="./../../data/processed/",

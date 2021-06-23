@@ -209,6 +209,7 @@ THIS METHOD')
         print('SSmatrix', SSmatrix.shape)
         eigvalues, v = np.linalg.eigh(SSmatrix)
         eigvalues = eigvalues[::-1]
+
         # get rid of small negative eigenvalues (there shouldn't be any as the
         # eigenvalues of a real, symmetric matrix are non-negative, but
         # sometimes very small negative values do appear)
@@ -273,8 +274,9 @@ THIS METHOD')
                 snapshots_per_grid[:, iTime] = snapshots_matrix[:,
                                                                 iTime*nGrids
                                                                 + iGrid]
-
+            print(snapshots_per_grid)
             pod_coeffs.append(np.dot(basis.T, snapshots_per_grid))
+            print(basis.shape)
 
         np.save(out_dir + "/pod_coeffs_field_{}".format(
             field_names[iField]), np.array(pod_coeffs))
