@@ -6,4 +6,5 @@ coverage*
 docs/build
 *events.out*
 *.ipynb_checkpoints*
-*.pyc*
+*.pyc
+*.vtu
