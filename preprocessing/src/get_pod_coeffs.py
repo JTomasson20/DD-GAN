@@ -5,9 +5,9 @@ from utils import get_grid_end_points
 import argparse
 
 
-def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_old/',
-                   data_file_base='fpc_2D_Re3900_CG_',
-                   out_dir='./../../data/processed/', nTime=200,
+def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_new/',
+                   data_file_base='fpc_',
+                   out_dir='./../../data/processed/', nTime=204,
                    offset=500, field_names=['Velocity'], nGrids=4, xlength=2.2,
                    ylength=0.41, nloc=3, nScalar=2, nDim=2):
     """
@@ -17,13 +17,13 @@ def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_old/',
 
     Args:
         data_dir (str, optional): Input data folder.
-            Defaults to './../../data/FPC_Re3900_2D_CG_old/'.
+            Defaults to './../../data/FPC_Re3900_2D_CG_new/'.
         data_file_base (str, optional): Base filename, timesteps will be
-            appended. Defaults to 'fpc_2D_Re3900_CG_'.
+            appended. Defaults to 'fpc_'.
         out_dir (str, optional): Output data folder. Defaults to
             './../../data/processed/'.
         nTime (int, optional): Number of timesteps to include in snapshots
-            matrix. Defaults to 200.
+            matrix. Defaults to 204.
         offset (int, optional): At which time level to start taking the
             snapshots. Defaults to 500.
         field_names (list, optional): Names of fields to include from vtu
@@ -276,8 +276,12 @@ THIS METHOD')
 
             pod_coeffs.append(np.dot(basis.T, snapshots_per_grid))
 
-        np.save(out_dir + "/pod_coeffs_field_{}".format(field_names[iField]),
-                np.array(pod_coeffs))
+        np.save(out_dir + "/pod_coeffs_field_{}".format(
+            field_names[iField]), np.array(pod_coeffs))
+        np.save(out_dir + "/pod_basis_field_{}".format(
+            field_names[iField]), np.array(v))
+        np.savetxt(out_dir + "/pod_eigenvalues_field{}".format(
+            field_names[iField]), np.array(eigvalues))
 
 
 if __name__ == '__main__':
@@ -289,15 +293,15 @@ Note that output will be saved under the folder specified by out_dir as \
 The shape of the output matrix will be (num_subgrids, num_pod_coeffs, \
 num_time_levels)")
     parser.add_argument('--data_dir', type=str, nargs='?',
-                        default="./../../data/FPC_Re3900_2D_CG_old/",
+                        default="./../../data/FPC_Re3900_2D_CG_new/",
                         help='Input data folder')
     parser.add_argument('--data_file_base', type=str, nargs='?',
-                        default="fpc_2D_Re3900_CG_",
+                        default="fpc_",
                         help='Base filename')
     parser.add_argument('--out_dir', type=str, nargs='?',
                         default="./../../data/processed/",
                         help='Output data folder')
-    parser.add_argument('--nTime', type=int, nargs='?', default=200,
+    parser.add_argument('--nTime', type=int, nargs='?', default=204,
                         help='Number of timesteps to include in snapshots')
     parser.add_argument('--offset', type=int, nargs='?', default=500,
                         help='At which time level to start taking snapshots')

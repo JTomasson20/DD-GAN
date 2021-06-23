@@ -127,8 +127,8 @@ class Optimize:
 
         losses_from_opt = []
         norm_latent_list = []
-        converged = np.zeros((iterations, 5))
-        latent = np.zeros((iterations, 5))
+        converged = np.zeros((iterations, self.nLatent))
+        latent = np.zeros((iterations, self.nLatent))
 
         current = tf.Variable(tf.zeros([1, self.gan.ndims]))
 

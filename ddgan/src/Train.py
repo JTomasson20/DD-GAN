@@ -4,6 +4,7 @@ Jón Atli Tómasson and Zef Wolffs
 
 __all__ = ['GAN']
 
+import glob
 import tensorflow as tf
 import numpy as np
 import sklearn
@@ -20,13 +21,13 @@ class GAN:
     # Keyword argument definitions
     nsteps: int = 5  # Consecutive timesteps
     ndims: int = 5  # Reduced dimensions
-    lmbda: int = 10
     n_critic: int = 5
+    lmbda: int = 10  # Gradient penalty multiplier
     batch_size: int = 20  # 32
     batches: int = 10  # 900
     seed: int = 143
+    epochs: int = 500
     logs_location: str = './logs/gradient_tape/'
-    model_number: int = 1
 
     # Objects
     generator = None
@@ -86,57 +87,68 @@ class GAN:
         Create the generator network
         """
         self.generator = tf.keras.Sequential()
-        self.generator.add(
-            tf.keras.layers.Dense(5, input_shape=(5,), activation='relu',
-                                  kernel_initializer=self.initializer))  # 5
+        self.generator.add(tf.keras.layers.Dense(
+                                5, input_shape=(self.ndims, ),
+                                activation='relu',
+                                kernel_initializer=self.initializer))  # 5
+
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(
-            tf.keras.layers.Dense(10, activation='relu',
-                                  kernel_initializer=self.initializer))  # 10
+        self.generator.add(tf.keras.layers.Dense(
+                                10, activation='relu',
+                                kernel_initializer=self.initializer))  # 10
+
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='relu',
-                           kernel_initializer=self.initializer))  # 25
+        self.generator.add(tf.keras.layers.Dense(
+                                (self.ndims*self.nsteps), activation='relu',
+                                kernel_initializer=self.initializer))  # 25
+
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense((5*self.nsteps),
-                           activation='tanh',
-                           kernel_initializer=self.initializer))  # 25
+        self.generator.add(tf.keras.layers.Dense(
+                                (self.ndims*self.nsteps), activation='tanh',
+                                kernel_initializer=self.initializer))  # 25
 
     def make_discriminator(self) -> None:
         """
         Create the discriminator network
         """
         self.discriminator = tf.keras.Sequential()
-        self.discriminator.add(
-            tf.keras.layers.Dense(5*self.nsteps,
-                                  input_shape=(5*self.nsteps,),
-                                  kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Dense(
+                                self.ndims*self.nsteps,
+                                input_shape=(self.ndims*self.nsteps,),
+                                kernel_initializer=self.initializer))
+
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
-        self.discriminator.add(
-            tf.keras.layers.Dense(10, kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Dense(
+                                10, kernel_initializer=self.initializer))
+
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(
-            tf.keras.layers.Dense(5, kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Dense(
+                                5, kernel_initializer=self.initializer))
+
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Flatten())
-        self.discriminator.add(
-            tf.keras.layers.Dense(1, kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Dense(
+                                1, kernel_initializer=self.initializer))
 
-    def make_GAN(self) -> None:
+    def make_GAN(self, folder='models/') -> None:
         """
         Searching for an existing model, creating one from scratch
         if not found.
         """
-        # Expansion could include automatic detection
         try:
             print('looking for previous saved models')
-            saved_g1_dir = './saved_g_' + str(self.model_number)
-            self.generator = tf.keras.models.load_model(saved_g1_dir)
+            g_dir = glob.glob('./' + folder + 'saved_g_*')
+            d_dir = glob.glob('./' + folder + 'saved_d_*')
 
-            saved_d1_dir = './saved_c_' + str(self.model_number)
-            self.discriminator = tf.keras.models.load_model(saved_d1_dir)
+            if g_dir and g_dir:
+                self.generator = tf.keras.models.load_model(g_dir[-1])
+                self.discriminator = tf.keras.models.load_model(d_dir[-1])
+            else:
+                print('making new generator and critic')
+                self.make_generator()
+                self.make_discriminator()
 
         except OSError:
             print('making new generator and critic')
@@ -171,17 +183,17 @@ class GAN:
         """
         return -tf.reduce_mean(d_fake)
 
-    def save_gan(self, epoch: int) -> None:
+    def save_gan(self, epoch: int, folder='models/') -> None:
         """
         Saving a trained model
 
         Args:
             epoch (int): Epoch number
         """
-        saved_g1_dir = './saved_g_' + str(epoch + 1)
-        saved_d1_dir = './saved_c_' + str(epoch + 1)
-        tf.keras.models.save_model(self.generator, saved_g1_dir)
-        tf.keras.models.save_model(self.discriminator, saved_d1_dir)
+        saved_g_dir = './' + folder + 'saved_g_' + str(epoch + 1)
+        saved_d_dir = './' + folder + 'saved_c_' + str(epoch + 1)
+        tf.keras.models.save_model(self.generator, saved_g_dir)
+        tf.keras.models.save_model(self.discriminator, saved_d_dir)
 
     def write_summary(self, epoch: int) -> None:
         """
@@ -215,41 +227,48 @@ class GAN:
               'd loss: ', self.d_loss.result().numpy(),
               'w_loss: ', self.w_loss.result().numpy())
 
-    def train(self, training_data: np.ndarray,
-              input_to_GAN: np.ndarray,
-              epochs: int
+    def train(self,
+              training_data: np.ndarray,
+              gan_input: np.ndarray,
               ) -> None:
         """
         Training the GAN
 
         Args:
             training_data (np.ndarray): Actual values for comparison
-            input_to_GAN(np.ndarray): Random input values in the shape n x Dims
-            epochs (int): number of training epochs
+            gan_input(np.ndarray): Random input values in the shape n x Dims
         """
-        losses = np.zeros((epochs, 4))
+        losses = np.zeros((self.epochs, 4))
 
-        for epoch in range(epochs):
+        for epoch in range(self.epochs):
             print('epoch: \t', epoch)
-            noise = input_to_GAN
-            real_data = training_data  # X1.astype('int')
+            # real_data = training_data  # X1.astype('int')
 
             # uncommenting this line means that the noise is not paired with
             # the outputs (probably desirable)
-            # noise = np.random.normal(size=[noise.shape[0],noise.shape[1]])
+            # noise = np.random.normal(
+            # size=[gan_input.shape[0], gan_input.shape[1]]
+            # )
 
             # shuffle each epoch
-            real_data, noise = sklearn.utils.shuffle(real_data, noise)
-            xx1 = real_data.reshape(self.batches,
+            real_data, noise = sklearn.utils.shuffle(training_data, gan_input)
+            # shaped_real_data = real_data.reshape(
+            #                         self.batches,
+            #                         self.batch_size,
+            #                         self.ndims*self.nsteps)
+
+            shaped_real_data = real_data.reshape(
+                                    10,
                                     self.batch_size,
                                     self.ndims*self.nsteps)
 
-            inpt = noise.reshape(self.batches,
-                                 self.batch_size,
-                                 self.ndims)
+            shaped_noise = noise.reshape(
+                                    10,
+                                    self.batch_size,
+                                    self.ndims)
 
-            for i in range(self.batches):
-                train_step(self, inpt[i], xx1[i])
+            for i in range(shaped_real_data.shape[0]):
+                train_step(self, shaped_noise[i], shaped_real_data[i])
 
             self.print_loss()
 
@@ -269,16 +288,15 @@ class GAN:
 
     def learn_hypersurface_from_POD_coeffs(self,
                                            nPOD,
-                                           input_to_GAN,
+                                           gan_input,
                                            training_data,
-                                           ndims_latent_input,
-                                           epochs=100):
+                                           ndims_latent_input):
         """
         Make and train a model
 
         Args:
             nPOD ([type]): [description]
-            input_to_GAN ([type]): [description]
+            gan_input ([type]): [description]
             training_data ([type]): [description]
             ndims_latent_input ([type]): [description]
 
@@ -289,7 +307,7 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        self.train(training_data, input_to_GAN, epochs)
+        self.train(training_data, gan_input)
         print('ending training')
 
         # generate some random inputs and put through generator
