@@ -19,59 +19,41 @@ def set_seed(seed):
 
 # Clashes when trying to include this within the GAN class
 @tf.function
-def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
+def train_step(gan, batch: np.ndarray) -> None:
     """
     Training the gan for a single step
 
     Args:
         gan (GAN): Model object
         noise (np.ndarray): Gaussian noise input
-        real (np.ndarray): Actual values
     """
-    for i in range(gan.n_critic):
-        with tf.GradientTape() as t:
-            with tf.GradientTape() as t1:
-                fake = gan.generator(noise, training=True)
-                epsilon = tf.random.uniform(shape=[gan.batch_size, 1],
-                                            minval=0., maxval=1.)
+    noise = tf.random.normal([gan.batch_size, gan.latent_space])
 
-                interpolated = real + epsilon * (fake - real)
-                t1.watch(interpolated)
-                c_inter = gan.discriminator(interpolated, training=True)
-                d_real = gan.discriminator(real, training=True)
-                d_fake = gan.discriminator(fake, training=True)
-                d_loss = gan.discriminator_loss(d_real, d_fake)
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+        generated_images = gan.generator(noise, training=True)
 
-            grad_interpolated = t1.gradient(c_inter, interpolated)
-            slopes = tf.sqrt(tf.reduce_sum(
-                            tf.square(grad_interpolated) + 1e-12, axis=[1])
-                            )
+        real_output = gan.discriminator(batch, training=True)
+        fake_output = gan.discriminator(generated_images, training=True)
 
-            gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
-            new_d_loss = d_loss + (gan.lmbda*gradient_penalty)
+        gen_loss = gan.generator_loss(fake_output)
+        disc_loss = gan.discriminator_loss(real_output, fake_output)
 
-        c_grad = t.gradient(new_d_loss,
-                            gan.discriminator.trainable_variables
-                            )
+    gen_grads = gen_tape.gradient(
+        gen_loss,
+        gan.generator.trainable_variables
+        )
+    disc_grads = disc_tape.gradient(
+        disc_loss,
+        gan.discriminator.trainable_variables
+        )
 
-        gan.discriminator_opt.apply_gradients(
-                            zip(c_grad, gan.discriminator.trainable_variables)
-                            )
+    gan.generator_opt.apply_gradients(
+        zip(gen_grads, gan.generator.trainable_variables)
+        )
+    gan.discriminator_opt.apply_gradients(
+        zip(disc_grads, gan.discriminator.trainable_variables)
+        )
 
-    # train generator
-    with tf.GradientTape() as gen_tape:
-        fake_images = gan.generator(noise, training=True)
-        d_fake = gan.discriminator(fake_images, training=True)
-        g_loss = gan.generator_loss(d_fake)
+    gan.generator_mean_loss(gen_loss)
+    gan.discriminator_mean_loss(disc_loss)
 
-    gen_grads = gen_tape.gradient(g_loss,
-                                  gan.generator.trainable_variables)
-
-    gan.generator_opt.apply_gradients(zip(gen_grads,
-                                          gan.generator.
-                                          trainable_variables))
-
-    # for tensorboard
-    gan.g_loss(g_loss)
-    gan.d_loss(new_d_loss)
-    gan.w_loss((-1)*(d_loss))  # wasserstein distance

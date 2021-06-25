@@ -2,7 +2,6 @@ import u2r
 import vtktools
 import numpy as np
 from utils import get_grid_end_points
-import argparse
 import os
 
 def get_clean_vtk_file(filename):
@@ -40,7 +39,7 @@ def create_vtu_file(path, nNodes, value_mesh_twice_interp, filename, orig_vel, i
     new_vtu.Write()
     return
 
-def reconstruct(snapshot_data_location="./../../data/FPC_Re3900_2D_CG_new/", snapshot_file_base="fpc_", reconstructed_file="./reconstruction.npy", nGrids=4, xlength=2.2, ylength=0.41, nTime=2000, field_names = ['Velocity'], offset=0):
+def reconstruct(snapshot_data_location="./../../data/FPC_Re3900_2D_CG_reconstruct/", snapshot_file_base="fpc_", reconstructed_file="./../../data/reconstructed/velocity_field.npy", nGrids=1, xlength=2.2, ylength=0.41, nTime=25, field_names=['Velocity'], offset=0):
 
     nFields=len(field_names)
 

@@ -10,7 +10,7 @@ First thing to do is to descend into preprocessing source directory
 
 and install the requirements
 
-```pip install -r requirements.txt```
+```pip install -r ../requirements.txt```
 
 To compile the fortran library for python to use (u2r is the library):
 
@@ -30,3 +30,5 @@ Go to that line where that module is imported (the error stack will tell you) an
 - When using a virtualenv or conda environment
 
 You need to replace line 4 with where the site-packages folder is for your environment
+
+- 

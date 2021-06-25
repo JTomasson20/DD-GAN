@@ -7,7 +7,6 @@ __all__ = ['GAN']
 import glob
 import tensorflow as tf
 import numpy as np
-import sklearn
 import datetime
 from dataclasses import dataclass
 from ddgan.src.Utils import train_step
@@ -19,15 +18,18 @@ class GAN:
     Class for the predictive GAN
     """
     # Keyword argument definitions
-    nsteps: int = 5  # Consecutive timesteps
-    ndims: int = 5  # Reduced dimensions
+    nsteps: int = 20  # Consecutive timesteps
+    ndims: int = 15  # Reduced dimensions
     n_critic: int = 5
     lmbda: int = 10  # Gradient penalty multiplier
-    batch_size: int = 20  # 32
+    batch_size: int = 256  # 32
     batches: int = 10  # 900
     seed: int = 143
     epochs: int = 500
     logs_location: str = './logs/gradient_tape/'
+
+    # Added definitions
+    latent_space: int = 100
 
     # Objects
     generator = None
@@ -39,6 +41,9 @@ class GAN:
     g_loss = None
     d_loss = None
     w_loss = None
+    cross_entropy = None
+    generator_mean_loss = None
+    discriminator_mean_loss = None
 
     # Other definitions
     g_summary_writer = None
@@ -55,12 +60,13 @@ class GAN:
         Args:
             kwargs (dict): key-value pairs of input variables
         """
-        self.generator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                      beta_1=0,
-                                                      beta_2=0.9)
-        self.discriminator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                          beta_1=0,
-                                                          beta_2=0.9)
+        self.generator_opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
+        self.discriminator_opt = tf.keras.optimizers.Adam(learning_rate=1e-4)
+
+        self.cross_entropy = tf.keras.losses.BinaryCrossentropy(
+            from_logits=True
+            )
+
         self.make_logs()
         self.make_GAN()
 
@@ -69,6 +75,9 @@ class GAN:
         Printing summaries for generator, discriminator and w in
         self.logs.location
         """
+        self.generator_mean_loss = tf.keras.metrics.Mean(dtype=tf.float32)
+        self.discriminator_mean_loss = tf.keras.metrics.Mean(dtype=tf.float32)
+
         self.g_loss = tf.keras.metrics.Mean('g_loss', dtype=tf.float32)
         self.d_loss = tf.keras.metrics.Mean('d_loss', dtype=tf.float32)
         self.w_loss = tf.keras.metrics.Mean('w_loss', dtype=tf.float32)
@@ -88,49 +97,59 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(
-                                5, input_shape=(self.ndims, ),
-                                activation='relu',
-                                kernel_initializer=self.initializer))  # 5
+                                5*4*256, use_bias=False,
+                                input_shape=(self.latent_space, )))  # ,
+        # kernel_initializer=self.initializer))  # 5
 
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(
-                                10, activation='relu',
-                                kernel_initializer=self.initializer))  # 10
+        self.generator.add(tf.keras.layers.LeakyReLU(0.2))
 
+        self.generator.add(tf.keras.layers.Reshape((5, 4, 256)))
+        self.generator.add(tf.keras.layers.Conv2DTranspose(
+                                128, (3, 3),
+                                strides=(1, 1),
+                                padding='same',
+                                use_bias=False))
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(
-                                (self.ndims*self.nsteps), activation='relu',
-                                kernel_initializer=self.initializer))  # 25
+        self.generator.add(tf.keras.layers.LeakyReLU(0.2))
 
+        self.generator.add(tf.keras.layers.Conv2DTranspose(
+                                64, (3, 3),
+                                strides=(2, 2),
+                                padding='same',
+                                use_bias=False))
         self.generator.add(tf.keras.layers.BatchNormalization())
-        self.generator.add(tf.keras.layers.Dense(
-                                (self.ndims*self.nsteps), activation='tanh',
-                                kernel_initializer=self.initializer))  # 25
+        self.generator.add(tf.keras.layers.LeakyReLU(0.2))
+
+        self.generator.add(tf.keras.layers.Conv2DTranspose(
+                                1, (3, 3),
+                                strides=(2, 2),
+                                padding='same',
+                                output_padding=[1, 0],
+                                use_bias=False,
+                                activation='tanh'))
+        self.generator.summary()
 
     def make_discriminator(self) -> None:
         """
         Create the discriminator network
         """
         self.discriminator = tf.keras.Sequential()
-        self.discriminator.add(tf.keras.layers.Dense(
-                                self.ndims*self.nsteps,
-                                input_shape=(self.ndims*self.nsteps,),
-                                kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Conv2D(
+                                    64, (3, 3),
+                                    strides=(2, 2),
+                                    padding='same',
+                                    input_shape=[20, 15, 1]))
+        self.discriminator.add(tf.keras.layers.LeakyReLU(0.2))
 
-        self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(tf.keras.layers.Dropout(0.3))
-        self.discriminator.add(tf.keras.layers.Dense(
-                                10, kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Conv2D(
+                                    128, (5, 5),
+                                    strides=(1, 2),
+                                    padding='same'))
+        self.discriminator.add(tf.keras.layers.LeakyReLU(0.2))
 
-        self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(tf.keras.layers.Dense(
-                                5, kernel_initializer=self.initializer))
-
-        self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
-        self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Flatten())
-        self.discriminator.add(tf.keras.layers.Dense(
-                                1, kernel_initializer=self.initializer))
+        self.discriminator.add(tf.keras.layers.Dense(1))
 
     def make_GAN(self, folder='models/') -> None:
         """
@@ -167,7 +186,9 @@ class GAN:
         Returns:
             float: Discriminator loss
         """
-        return tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
+        real_loss = self.cross_entropy(tf.ones_like(d_real), d_real)
+        fake_loss = self.cross_entropy(tf.zeros_like(d_fake), d_fake)
+        return real_loss + fake_loss
 
     def generator_loss(self, d_fake: float) -> float:
         """
@@ -181,7 +202,8 @@ class GAN:
         Returns:
             float: Generator loss
         """
-        return -tf.reduce_mean(d_fake)
+
+        return self.cross_entropy(tf.ones_like(d_fake), d_fake)
 
     def save_gan(self, epoch: int, folder='models/') -> None:
         """
@@ -203,34 +225,35 @@ class GAN:
             epoch (int): Current epoch
         """
         with self.g_summary_writer.as_default():
-            tf.summary.scalar('loss', self.g_loss.result(), step=epoch)
+            tf.summary.scalar(
+                'loss',
+                self.generator_mean_loss.result(),
+                step=epoch)
 
         with self.d_summary_writer.as_default():
-            tf.summary.scalar('loss', self.d_loss.result(), step=epoch)
-
-        with self.w_summary_writer.as_default():
-            tf.summary.scalar('loss', self.w_loss.result(), step=epoch)
+            tf.summary.scalar(
+                'loss',
+                self.discriminator_mean_loss.result(),
+                step=epoch)
 
     def resetting_states(self) -> None:
         """
         Resetting model loss states
         """
-        self.g_loss.reset_states()
-        self.d_loss.reset_states()
-        self.w_loss.reset_states()
+        self.generator_mean_loss.reset_states()
+        self.discriminator_mean_loss.reset_states()
 
     def print_loss(self) -> None:
         """
         Printing the loss results
         """
-        print('gen loss: ', self.g_loss.result().numpy(),
-              'd loss: ', self.d_loss.result().numpy(),
-              'w_loss: ', self.w_loss.result().numpy())
+        print('generator loss: ',
+              self.generator_mean_loss.result().numpy(),
+              'discriminator loss: ',
+              self.discriminator_mean_loss.result().numpy()
+              )
 
-    def train(self,
-              training_data: np.ndarray,
-              gan_input: np.ndarray,
-              ) -> None:
+    def train(self, dataset: np.ndarray) -> None:
         """
         Training the GAN
 
@@ -238,44 +261,19 @@ class GAN:
             training_data (np.ndarray): Actual values for comparison
             gan_input(np.ndarray): Random input values in the shape n x Dims
         """
-        losses = np.zeros((self.epochs, 4))
+        losses = np.zeros((self.epochs, 3))
 
         for epoch in range(self.epochs):
             print('epoch: \t', epoch)
-            # real_data = training_data  # X1.astype('int')
 
-            # uncommenting this line means that the noise is not paired with
-            # the outputs (probably desirable)
-            # noise = np.random.normal(
-            # size=[gan_input.shape[0], gan_input.shape[1]]
-            # )
-
-            # shuffle each epoch
-            real_data, noise = sklearn.utils.shuffle(training_data, gan_input)
-            # shaped_real_data = real_data.reshape(
-            #                         self.batches,
-            #                         self.batch_size,
-            #                         self.ndims*self.nsteps)
-
-            shaped_real_data = real_data.reshape(
-                                    10,
-                                    self.batch_size,
-                                    self.ndims*self.nsteps)
-
-            shaped_noise = noise.reshape(
-                                    10,
-                                    self.batch_size,
-                                    self.ndims)
-
-            for i in range(shaped_real_data.shape[0]):
-                train_step(self, shaped_noise[i], shaped_real_data[i])
+            for batch in dataset:
+                train_step(self, batch)
 
             self.print_loss()
 
             losses[epoch, :] = [epoch+1,
-                                self.g_loss.result().numpy(),
-                                self.d_loss.result().numpy(),
-                                self.w_loss.result().numpy()]
+                                self.generator_mean_loss.result().numpy(),
+                                self.discriminator_mean_loss.result().numpy()]
 
             self.write_summary(epoch)
             self.resetting_states()
@@ -287,10 +285,7 @@ class GAN:
         np.savetxt('losses.csv', losses, delimiter=',')
 
     def learn_hypersurface_from_POD_coeffs(self,
-                                           nPOD,
-                                           gan_input,
-                                           training_data,
-                                           ndims_latent_input):
+                                           training_data):
         """
         Make and train a model
 
@@ -307,24 +302,5 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        self.train(training_data, gan_input)
+        self.train(training_data)
         print('ending training')
-
-        # generate some random inputs and put through generator
-        number_test_examples = 10
-        test_input = tf.random.normal([number_test_examples,
-                                       ndims_latent_input])
-        predictions = self.generator(test_input, training=False)
-        # predictions = generator.predict(test_input)
-        # number_test_examples by ndims_latent_input
-
-        predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
-        # tf.compat.v1.InteractiveSession()
-        # predictions_np = predictions.numpy().
-
-        # Reshaping the GAN output (in order to apply inverse scaling)
-        predictions_np = predictions_np.reshape(
-            number_test_examples*self.nsteps,
-            nPOD)
-
-        return predictions_np

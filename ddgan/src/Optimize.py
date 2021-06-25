@@ -13,153 +13,41 @@ class Optimize:
     in the order innermost -> outermost. The function therefore most
     often called appears first
     """
-    start_from: int = 100
-    nPOD: int = 10
-    nLatent: int = nPOD
+    start_from: int = 0
+    nPOD: int = 15
     iterations: int = 10
     npredictions: int = 20
     optimizer_epochs: int = 5000
     gan: GAN = None
 
+    latent_size: int = 100
+    ntimes: int = 20
+
     mse = tf.keras.losses.MeanSquaredError()
-    optimizer = tf.keras.optimizers.Adam(5e-3)
+    optimizer = tf.keras.optimizers.Adam(1e-2)
 
-    @tf.function
-    def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
-        """
-        Main input optimization loop optimizing the latent variable
-        based on mse
-
-        Args:
-            latent_var (tf.variable): Variable to be optimized
-            output (np.ndarray): Actual output
-
-        Returns:
-            float: loss variable
-            float: norm of the latent variables
-        """
-
+    def opt_step(self, latent_values, real_coding):
         with tf.GradientTape() as tape:
-            tape.watch(latent_var)
-            r = self.gan.generator(latent_var, training=False)
+            tape.watch(latent_values)
+            gen_output = self.gan.generator(latent_values, training=False)
+            loss = self.mse(
+                real_coding,
+                gen_output[:, :(self.ntimes - 1), :, :]
+                )
 
-            loss = self.mse(output,
-                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
+        gradient = tape.gradient(loss, latent_values)
+        self.optimizer.apply_gradients(zip([gradient], [latent_values]))
 
-        gradients = tape.gradient(loss, latent_var)
-        self.optimizer.apply_gradients(zip([gradients], [latent_var]))
+        return loss
 
-        norm_latent_vars = tf.norm(latent_var)
+    def optimize_coding(self, latent_values, real_coding):
 
-        # clipping to within 2.3 is equivalent to 98%
-        # if norm_latent_vars > 2.3:
-        #    latent_var = 2.3 / norm_latent_vars * latent_var
-        #    tf.print('clipping to ', tf.norm(latent_var))
+        for epoch in range(self.optimizer_epochs):
+            self.opt_step(latent_values, real_coding)
 
-        return loss, norm_latent_vars
+        return latent_values
 
-    def timestep_loop(self,
-                      real_output: np.ndarray,
-                      prev_latent: np.ndarray,
-                      attempts: int):
-        """
-        Optimizes inputs either from a previous timestep or from
-        new randomly initialized inputs
-
-        Args:
-            real_output (np.ndarray): Actual values
-            prev_latent (np.ndarray): Latent values from previous iteration
-            attempts (int): Number of optimization iterations
-
-        Returns:
-            np.ndarray: Updated values
-            list: Loss values
-            np.ndarray: Converged values
-            np.ndarray: Initial z values
-            list: Norm of latent variables
-        """
-        inputs = []
-        losses = []
-
-        loss_list = []
-        norm_latent_list = []
-
-        init_latent = prev_latent.numpy()
-
-        for j in range(attempts):
-
-            ip = prev_latent
-
-            for epoch in range(self.optimizer_epochs):
-                if epoch % 100 == 0:
-                    print('Optimizer epoch: \t', epoch)
-
-                loss, norm_latent = self.opt_latent_var(ip, real_output)
-                loss_list.append(loss)
-                norm_latent_list.append(norm_latent)
-
-            r = self.gan.generator(ip, training=False)
-            loss = self.mse(real_output,
-                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
-
-            ip_np = ip.numpy()
-
-            inputs.append(ip_np)
-            losses.append(loss.numpy())
-
-        return ip, loss_list, ip_np, init_latent, norm_latent_list
-
-    def timesteps(self, initial, inn, iterations):
-        """
-        Outermost loop. Collecting the predicted points and
-        iterating through predictions
-
-        Args:
-            initial (np.ndarray): Initial value array
-            inn (np.ndarray): Gan input array
-            iterations (int): Number of predicted points
-
-        Returns:
-            np.ndarray: Predicted points
-        """
-        the_input = tf.convert_to_tensor(inn)
-        flds = tf.convert_to_tensor(initial)
-
-        losses_from_opt = []
-        norm_latent_list = []
-        converged = np.zeros((iterations, self.nLatent))
-        latent = np.zeros((iterations, self.nLatent))
-
-        current = tf.Variable(tf.zeros([1, self.gan.ndims]))
-
-        for i in range(iterations):
-            print('Time step: \t', i)
-
-            updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
-                self.timestep_loop(the_input, current, 1)
-            current = updated
-
-            losses_from_opt.append(loss_opt)
-            norm_latent_list.append(norm_latent)
-
-            prediction = self.gan.generator(updated, training=False)
-
-            # Last 4 images become next first 4 images
-            next_input = prediction[:, self.gan.ndims:]
-
-            # Last image out of 5 is added to list of compressed vars
-            new_result = prediction[:, self.gan.ndims*(self.gan.nsteps - 1):]
-            flds = tf.concat([flds, new_result], 0)
-            the_input = next_input.numpy()
-
-        np.savetxt('optimised_losses.csv', losses_from_opt, delimiter=',')
-        np.savetxt('converged_z_values.csv', converged, delimiter=',')
-        np.savetxt('initial_z_values.csv', latent, delimiter=',')
-        np.savetxt('norm_latent_vars.csv', norm_latent_list, delimiter=',')
-
-        return flds
-
-    def predict(self, training_data, scaling=None, **kwargs) -> np.ndarray:
+    def predict(self, X_train_concat, scaling=None, **kwargs) -> np.ndarray:
         """
         Communicator with the optimization scripts
 
@@ -171,20 +59,41 @@ class Optimize:
         Returns:
             np.ndarray: predictions
         """
-        assert self.gan is not None, "Please initialize using an active GAN"
 
-        inn = training_data[self.start_from,
-                            :(self.gan.nsteps-1)*self.nPOD
-                            ].reshape(1, (self.gan.nsteps - 1) * self.nLatent)
+        real_coding = X_train_concat[0].reshape(1, -1)
+        real_coding = real_coding[:, : self.nPOD*(self.ntimes - 1)]
+        real_coding = tf.constant(real_coding)
+        real_coding = tf.cast(real_coding, dtype=tf.float32)
 
-        initial_comp = training_data[self.start_from,
-                                     :(self.gan.nsteps-1)*self.nPOD
-                                     ].reshape(
-                                         (self.gan.nsteps - 1),
-                                         self.nLatent)
+        latent_values = tf.random.normal([len(real_coding), self.latent_size])
+        latent_values = tf.Variable(latent_values)
 
-        flds = self.timesteps(initial_comp, inn, self.npredictions)
-        if scaling is not None:
-            flds = scaling.inverse_transform(flds).T
+        latent_values = self.optimize_coding(latent_values, real_coding)
 
-        return flds
+        X_predict = list(
+            self.gan.generator(latent_values).numpy().reshape(-1, self.nPOD)
+            )
+        gen_predict = X_predict[-1]
+        real_coding = np.concatenate((
+            real_coding,
+            gen_predict.reshape(1, -1)), axis=1
+            )[:, self.nPOD:]
+        real_coding = tf.constant(real_coding)
+        real_coding = tf.cast(real_coding, dtype=tf.float32)
+
+        for i in range(self.npredictions):
+            print("Prediction: ", i, " / ", self.npredictions)
+            latent_values = self.optimize_coding(latent_values, real_coding)
+            gen_predict = self.gan.generator(
+                latent_values
+                )[:, (self.ntimes - 1):, :, :].numpy()
+            X_predict.append(gen_predict.flatten())
+            real_coding = np.concatenate((
+                real_coding,
+                gen_predict.reshape(1, -1)), axis=1
+                )[:, self.nPOD:]
+            real_coding = tf.constant(real_coding)
+            real_coding = tf.cast(real_coding, dtype=tf.float32)
+        X_predict = np.array(X_predict)
+
+        return X_predict

@@ -8,7 +8,7 @@ import argparse
 def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_new/',
                    data_file_base='fpc_',
                    out_dir='./../../data/processed/', nTime=204,
-                   offset=500, field_names=['Velocity'], nGrids=4, xlength=2.2,
+                   offset=0, field_names=['Velocity'], nGrids=4, xlength=2.2,
                    ylength=0.41, nloc=3, nScalar=2, nDim=2):
     """
     Function that wraps some legacy code to interpolated data from  an
@@ -25,7 +25,7 @@ def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_new/',
         nTime (int, optional): Number of timesteps to include in snapshots
             matrix. Defaults to 204.
         offset (int, optional): At which time level to start taking the
-            snapshots. Defaults to 500.
+            snapshots. Defaults to 0.
         field_names (list, optional): Names of fields to include from vtu
             data file. Defaults to ['Velocity'].
         nGrids (int, optional): Number of grids of decomposed domain,
@@ -189,7 +189,7 @@ def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_new/',
     cumulative_tol = 0.99
     nPOD = [nTime]  # len(nPOD) = nFields
     nPOD = [-2]
-    nPOD = [10]  # 100 50 10
+    nPOD = [15]  # 100 50 10
 
     bases = []
     singular_values = []
@@ -281,9 +281,8 @@ THIS METHOD')
         np.save(out_dir + "/pod_coeffs_field_{}".format(
             field_names[iField]), np.array(pod_coeffs))
         np.save(out_dir + "/pod_basis_field_{}".format(
-            field_names[iField]), np.array(v))
-        np.savetxt(out_dir + "/pod_eigenvalues_field{}".format(
-            field_names[iField]), np.array(eigvalues))
+            field_names[iField]), np.array(basis))
+
 
 
 if __name__ == '__main__':
@@ -305,7 +304,7 @@ num_time_levels)")
                         help='Output data folder')
     parser.add_argument('--nTime', type=int, nargs='?', default=204,
                         help='Number of timesteps to include in snapshots')
-    parser.add_argument('--offset', type=int, nargs='?', default=500,
+    parser.add_argument('--offset', type=int, nargs='?', default=0,
                         help='At which time level to start taking snapshots')
     parser.add_argument('--field_names', type=list, nargs='?',
                         default=['Velocity'],
