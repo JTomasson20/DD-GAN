@@ -137,23 +137,9 @@ class GAN:
         Searching for an existing model, creating one from scratch
         if not found.
         """
-        try:
-            print('looking for previous saved models')
-            g_dir = glob.glob('./' + folder + 'saved_g_*')
-            d_dir = glob.glob('./' + folder + 'saved_d_*')
-
-            if g_dir and g_dir:
-                self.generator = tf.keras.models.load_model(g_dir[-1])
-                self.discriminator = tf.keras.models.load_model(d_dir[-1])
-            else:
-                print('making new generator and critic')
-                self.make_generator()
-                self.make_discriminator()
-
-        except OSError:
-            print('making new generator and critic')
-            self.make_generator()
-            self.make_discriminator()
+        print('making new generator and critic')
+        self.make_generator()
+        self.make_discriminator()
 
     def discriminator_loss(self, d_real: float, d_fake: float) -> float:
         """
