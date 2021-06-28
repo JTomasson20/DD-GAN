@@ -4,7 +4,6 @@ Jón Atli Tómasson and Zef Wolffs
 
 __all__ = ['GAN']
 
-import glob
 import tensorflow as tf
 import numpy as np
 import sklearn
@@ -28,6 +27,10 @@ class GAN:
     seed: int = 143
     epochs: int = 500
     logs_location: str = './logs/gradient_tape/'
+    gen_learning_rate: float = 0.0001
+    disc_learning_rate: float = 0.0001
+
+    latent_space: int = 10
 
     # Objects
     generator = None
@@ -55,12 +58,18 @@ class GAN:
         Args:
             kwargs (dict): key-value pairs of input variables
         """
-        self.generator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                      beta_1=0,
-                                                      beta_2=0.9)
-        self.discriminator_opt = tf.keras.optimizers.Adam(learning_rate=0.0001,
-                                                          beta_1=0,
-                                                          beta_2=0.9)
+        self.generator_opt = tf.keras.optimizers.Adam(
+            learning_rate=self.gen_learning_rate,
+            beta_1=0,
+            beta_2=0.9
+            )
+
+        self.discriminator_opt = tf.keras.optimizers.Adam(
+            learning_rate=self.disc_learning_rate,
+            beta_1=0,
+            beta_2=0.9
+            )
+
         self.make_logs()
         self.make_GAN()
 
@@ -88,13 +97,13 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(
-                                5, input_shape=(self.ndims, ),
+                                10, input_shape=(self.latent_space, ),
                                 activation='relu',
                                 kernel_initializer=self.initializer))  # 5
 
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
-                                10, activation='relu',
+                                15, activation='relu',
                                 kernel_initializer=self.initializer))  # 10
 
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -238,18 +247,14 @@ class GAN:
 
             # shuffle each epoch
             real_data, noise = sklearn.utils.shuffle(training_data, gan_input)
-            # shaped_real_data = real_data.reshape(
-            #                         self.batches,
-            #                         self.batch_size,
-            #                         self.ndims*self.nsteps)
 
             shaped_real_data = real_data.reshape(
-                                    10,
+                                    self.batches,
                                     self.batch_size,
                                     self.ndims*self.nsteps)
 
             shaped_noise = noise.reshape(
-                                    10,
+                                    self.batches,
                                     self.batch_size,
                                     self.ndims)
 
@@ -273,7 +278,6 @@ class GAN:
         np.savetxt('losses.csv', losses, delimiter=',')
 
     def learn_hypersurface_from_POD_coeffs(self,
-                                           nPOD,
                                            gan_input,
                                            training_data,
                                            ndims_latent_input):
@@ -281,8 +285,7 @@ class GAN:
         Make and train a model
 
         Args:
-            nPOD ([type]): [description]
-            gan_input ([type]): [description]
+            gan_input ([type]): random input 
             training_data ([type]): [description]
             ndims_latent_input ([type]): [description]
 
@@ -305,12 +308,10 @@ class GAN:
         # number_test_examples by ndims_latent_input
 
         predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
-        # tf.compat.v1.InteractiveSession()
-        # predictions_np = predictions.numpy().
 
         # Reshaping the GAN output (in order to apply inverse scaling)
         predictions_np = predictions_np.reshape(
             number_test_examples*self.nsteps,
-            nPOD)
+            self.ndims)
 
         return predictions_np
