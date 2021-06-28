@@ -20,19 +20,21 @@ class GAN:
     # Keyword argument definitions
     nsteps: int = 5  # Consecutive timesteps
     ndims: int = 5  # Reduced dimensions
-    n_critic: int = 5
+    n_critic: int = 5  # Number of gradient penalty computations per epoch
     lmbda: int = 10  # Gradient penalty multiplier
     batch_size: int = 20  # 32
     batches: int = 10  # 900
-    seed: int = 143
-    epochs: int = 500
+    seed: int = 143  # Random seed for reproducability
+    epochs: int = 500  # Number of training epochs
     logs_location: str = './logs/gradient_tape/'
-    gen_learning_rate: float = 0.0001
-    disc_learning_rate: float = 0.0001
+    gen_learning_rate: float = 0.0001  # Generator optimization learning rate
+    disc_learning_rate: float = 0.0001  # Discriminator optimization learning
 
-    latent_space: int = 10
+    latent_space: int = 10  # Dimensionality of the latent space
+    unpair_noise: bool = False  # Make input noise each iteration if true
 
-    # Objects
+    # Objects - Can be filled in at bootup and skip calling setup
+    # Remember to make logs if doing so
     generator = None
     discriminator = None
     generator_opt = None
@@ -58,13 +60,13 @@ class GAN:
         Args:
             kwargs (dict): key-value pairs of input variables
         """
-        self.generator_opt = tf.keras.optimizers.Adam(
+        self.generator_opt = tf.keras.optimizers.Nadam(
             learning_rate=self.gen_learning_rate,
             beta_1=0,
             beta_2=0.9
             )
 
-        self.discriminator_opt = tf.keras.optimizers.Adam(
+        self.discriminator_opt = tf.keras.optimizers.Nadam(
             learning_rate=self.disc_learning_rate,
             beta_1=0,
             beta_2=0.9
@@ -103,7 +105,7 @@ class GAN:
 
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
-                                15, activation='relu',
+                                10, activation='relu',
                                 kernel_initializer=self.initializer))  # 10
 
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -224,7 +226,7 @@ class GAN:
 
     def train(self,
               training_data: np.ndarray,
-              gan_input: np.ndarray,
+              gan_input: np.ndarray
               ) -> None:
         """
         Training the GAN
@@ -241,12 +243,15 @@ class GAN:
 
             # uncommenting this line means that the noise is not paired with
             # the outputs (probably desirable)
-            # noise = np.random.normal(
-            # size=[gan_input.shape[0], gan_input.shape[1]]
-            # )
+            if self.unpair_noise:
+                noise = np.random.normal(
+                    size=[gan_input.shape[0], gan_input.shape[1]]
+                )
+            else:
+                noise = gan_input
 
             # shuffle each epoch
-            real_data, noise = sklearn.utils.shuffle(training_data, gan_input)
+            real_data, noise = sklearn.utils.shuffle(training_data, noise)
 
             shaped_real_data = real_data.reshape(
                                     self.batches,
@@ -279,13 +284,12 @@ class GAN:
 
     def learn_hypersurface_from_POD_coeffs(self,
                                            gan_input,
-                                           training_data,
-                                           ndims_latent_input):
+                                           training_data):
         """
         Make and train a model
 
         Args:
-            gan_input ([type]): random input 
+            gan_input ([type]): random input
             training_data ([type]): [description]
             ndims_latent_input ([type]): [description]
 
@@ -300,18 +304,15 @@ class GAN:
         print('ending training')
 
         # generate some random inputs and put through generator
-        number_test_examples = 10
-        test_input = tf.random.normal([number_test_examples,
-                                       ndims_latent_input])
+        test_input = tf.random.normal([10,
+                                       self.latent_space])
         predictions = self.generator(test_input, training=False)
-        # predictions = generator.predict(test_input)
-        # number_test_examples by ndims_latent_input
 
         predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
 
         # Reshaping the GAN output (in order to apply inverse scaling)
         predictions_np = predictions_np.reshape(
-            number_test_examples*self.nsteps,
+            10*self.nsteps,
             self.ndims)
 
         return predictions_np
