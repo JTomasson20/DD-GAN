@@ -157,9 +157,9 @@ class GAN:
             try:
                 print('looking for previous saved models')
                 g_dir = glob.glob('./' + self.model_location + 'saved_g_*')
-                d_dir = glob.glob('./' + self.model_location + 'saved_d_*')
+                d_dir = glob.glob('./' + self.model_location + 'saved_c_*')
 
-                if g_dir and g_dir:
+                if g_dir and d_dir:
                     self.generator = tf.keras.models.load_model(g_dir[-1])
                     self.discriminator = tf.keras.models.load_model(d_dir[-1])
                 else:
