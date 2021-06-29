@@ -31,14 +31,14 @@ class Optimize:
         if self.bounds is not None:
             if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
                 return 1.e5
-
-        if self.eigenvals is not None:
-            return self.mse(
-                    tf.math.sqrt(self.eigenvals) * input,
-                    tf.math.sqrt(self.eigenvals) * output
-                    )
         else:
-            return self.mse(input, output)
+            if self.eigenvals is not None:
+                return self.mse(
+                        tf.math.sqrt(self.eigenvals) * input,
+                        tf.math.sqrt(self.eigenvals) * output
+                        )
+            else:
+                return self.mse(input, output)
 
     @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
