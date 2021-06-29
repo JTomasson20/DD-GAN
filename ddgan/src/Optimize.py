@@ -29,7 +29,7 @@ class Optimize:
     @tf.function
     def mse_loss(self, input, output):
         if self.bounds is not None:
-            if tf.math.maximum(tf.math.abs(output)) > self.bounds:
+            if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
                 return 1.e5
 
         if self.eigenvals is not None:
