@@ -18,7 +18,7 @@ def set_seed(seed):
     tf.random.set_seed(seed)
 
 
-def truncated_normal(mean=0., sd=1., low=-5., upp=5.):
+def truncated_normal(mean=0., sd=1., low=-4., upp=4.):
     """
     Generating a trunicated scipy random number generator
 

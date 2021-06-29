@@ -31,7 +31,7 @@ class GAN:
     disc_learning_rate: float = 0.0001  # Discriminator optimization learning
 
     latent_space: int = 10  # Dimensionality of the latent space
-    unpair_noise: bool = False  # Make input noise each iteration if true
+    unpair_noise: bool = True  # Make input noise each iteration if true
 
     # Objects - Can be filled in at bootup and skip calling setup
     # Remember to make logs if doing so
