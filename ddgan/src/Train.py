@@ -254,29 +254,21 @@ class GAN:
 
     def train(self,
               training_data: np.ndarray,
-              gan_input: np.ndarray
               ) -> None:
         """
         Training the GAN
 
         Args:
             training_data (np.ndarray): Actual values for comparison
-            gan_input(np.ndarray): Random input values in the shape n x Dims
         """
         losses = np.zeros((self.epochs, 4))
 
         for epoch in range(self.epochs):
             print('epoch: \t', epoch)
-            # real_data = training_data  # X1.astype('int')
 
-            # uncommenting this line means that the noise is not paired with
-            # the outputs (probably desirable)
-            if self.unpair_noise:
-                noise = self.random_generator(
-                    [gan_input.shape[0], gan_input.shape[1]]
-                    )
-            else:
-                noise = gan_input
+            noise = self.random_generator(
+                [training_data.shape[0], self.ndims]
+                )
 
             # shuffle each epoch
             real_data, noise = sklearn.utils.shuffle(training_data, noise)
@@ -311,15 +303,12 @@ class GAN:
         np.savetxt('losses.csv', losses, delimiter=',')
 
     def learn_hypersurface_from_POD_coeffs(self,
-                                           gan_input,
                                            training_data):
         """
         Make and train a model
 
         Args:
-            gan_input ([type]): random input
             training_data ([type]): [description]
-            ndims_latent_input ([type]): [description]
 
         Returns:
             [type]: [description]
@@ -328,12 +317,12 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        self.train(training_data, gan_input)
+        self.train(training_data)
         print('ending training')
 
         # generate some random inputs and put through generator
         test_input = self.random_generator(
-            [gan_input.shape[0], gan_input.shape[1]]
+            shape=[training_data.shape[0], self.ndims]
             )
 
         predictions = self.generator(test_input, training=False)
