@@ -21,24 +21,24 @@ class Optimize:
 
     gan: GAN = None
     eigenvals: np.ndarray = None
-    bounds: float = 4.0
+    bounds: float = 4.0  # set to inf if not in use
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
     @tf.function
     def mse_loss(self, input, output):
-        if self.bounds is not None:
-            if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
-                return 1.e5
+
+        if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
+            return 1.e5
+
+        elif self.eigenvals is not None:
+            return self.mse(
+                    tf.math.sqrt(self.eigenvals) * input,
+                    tf.math.sqrt(self.eigenvals) * output
+                    )
         else:
-            if self.eigenvals is not None:
-                return self.mse(
-                        tf.math.sqrt(self.eigenvals) * input,
-                        tf.math.sqrt(self.eigenvals) * output
-                        )
-            else:
-                return self.mse(input, output)
+            return self.mse(input, output)
 
     @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
