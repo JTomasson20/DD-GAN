@@ -33,8 +33,7 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
             with tf.GradientTape() as t1:
                 fake = gan.generator(noise, training=True)
                 epsilon = tf.random.uniform(shape=[gan.batch_size, 1],
-                                            minval=0.,
-                                            maxval=1.)
+                                            minval=0., maxval=1.)
 
                 interpolated = real + epsilon * (fake - real)
                 t1.watch(interpolated)
@@ -44,17 +43,20 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
                 d_loss = gan.discriminator_loss(d_real, d_fake)
 
             grad_interpolated = t1.gradient(c_inter, interpolated)
-            slopes = tf.sqrt(tf.reduce_sum(tf.square(grad_interpolated)
-                                           + 1e-12,
-                                           axis=[1]))
+            slopes = tf.sqrt(tf.reduce_sum(
+                            tf.square(grad_interpolated) + 1e-12, axis=[1])
+                            )
+
             gradient_penalty = tf.reduce_mean((slopes - 1.) ** 2)
             new_d_loss = d_loss + (gan.lmbda*gradient_penalty)
 
         c_grad = t.gradient(new_d_loss,
-                            gan.discriminator.trainable_variables)
-        gan.discriminator_opt.apply_gradients(zip(c_grad,
-                                                  gan.discriminator.
-                                                  trainable_variables))
+                            gan.discriminator.trainable_variables
+                            )
+
+        gan.discriminator_opt.apply_gradients(
+                            zip(c_grad, gan.discriminator.trainable_variables)
+                            )
 
     # train generator
     with tf.GradientTape() as gen_tape:
