@@ -19,10 +19,26 @@ class Optimize:
     iterations: int = 10
     npredictions: int = 20
     optimizer_epochs: int = 5000
+
     gan: GAN = None
+    eigenvals: np.ndarray = None
+    bounds: float = 4.0
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
+
+    def mse_loss(self, input, output):
+        if self.bounds is not None:
+            if np.sum(tf.math.abs(input) > self.bounds) > 0:
+                return 1e5
+
+        if self.eigenvals is not None:
+            return self.mse(
+                    tf.math.sqrt(self.eigenvals) * input,
+                    tf.math.sqrt(self.eigenvals) * output
+                    )
+        else:
+            return self.mse(input, output)
 
     @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
@@ -43,8 +59,9 @@ class Optimize:
             tape.watch(latent_var)
             r = self.gan.generator(latent_var, training=False)
 
-            loss = self.mse(output,
-                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
+            loss = self.mse_loss(output,
+                                 r[:, :self.gan.ndims*(self.gan.nsteps - 1)]
+                                 )
 
         gradients = tape.gradient(loss, latent_var)
         self.optimizer.apply_gradients(zip([gradients], [latent_var]))
@@ -78,16 +95,12 @@ class Optimize:
             np.ndarray: Initial z values
             list: Norm of latent variables
         """
-        inputs = []
-        losses = []
 
         loss_list = []
         norm_latent_list = []
-
         init_latent = prev_latent.numpy()
 
         for j in range(attempts):
-
             ip = prev_latent
 
             for epoch in range(self.optimizer_epochs):
@@ -103,9 +116,6 @@ class Optimize:
                             r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
 
             ip_np = ip.numpy()
-
-            inputs.append(ip_np)
-            losses.append(loss.numpy())
 
         return ip, loss_list, ip_np, init_latent, norm_latent_list
 
@@ -179,9 +189,9 @@ class Optimize:
 
         initial_comp = training_data[self.start_from,
                                      :(self.gan.nsteps-1)*self.nPOD
-                                     ].reshape(
-                                         (self.gan.nsteps - 1),
-                                         self.nLatent)
+                                     ].reshape(self.gan.nsteps - 1,
+                                               self.nLatent
+                                               )
 
         flds = self.timesteps(initial_comp, inn, self.npredictions)
         if scaling is not None:

@@ -3,3 +3,4 @@ tensorflow
 sklearn
 flake8
 pytest-cov
+scipy

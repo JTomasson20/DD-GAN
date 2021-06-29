@@ -3,3 +3,4 @@ numpy
 vtk
 argparse
 pytest
+scipy

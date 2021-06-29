@@ -9,7 +9,7 @@ import numpy as np
 import sklearn
 import datetime
 from dataclasses import dataclass
-from ddgan.src.Utils import train_step
+from ddgan.src.Utils import train_step, truncated_normal
 
 
 @dataclass(unsafe_hash=True)
@@ -50,10 +50,13 @@ class GAN:
     d_summary_writer = None
     w_summary_writer = None
 
-    initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05,
+    initializer = tf.keras.initializers.RandomNormal(mean=0.0,
+                                                     stddev=0.05,
                                                      seed=seed)
 
-    def setup(self) -> None:
+    random_generator = truncated_normal(mean=0, sd=1, low=4, upp=4)
+
+    def setup(self, direct=None) -> None:
         """
         Setting up the neccecary values for the GAN class
 
@@ -73,7 +76,7 @@ class GAN:
             )
 
         self.make_logs()
-        self.make_GAN()
+        self.make_GAN(folder=direct)
 
     def make_logs(self) -> None:
         """
@@ -143,7 +146,7 @@ class GAN:
         self.discriminator.add(tf.keras.layers.Dense(
                                 1, kernel_initializer=self.initializer))
 
-    def make_GAN(self, folder='models/') -> None:
+    def make_GAN(self, folder=None) -> None:
         """
         Searching for an existing model, creating one from scratch
         if not found.
@@ -152,7 +155,10 @@ class GAN:
         self.make_generator()
         self.make_discriminator()
 
-    def discriminator_loss(self, d_real: float, d_fake: float) -> float:
+    def discriminator_loss(self,
+                           d_real: np.ndarray,
+                           d_fake: np.ndarray
+                           ) -> float:
         """
         Calculate the loss for the discriminator as the sum of the reduced
         real and fake discriminator losses
@@ -166,7 +172,7 @@ class GAN:
         """
         return tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
 
-    def generator_loss(self, d_fake: float) -> float:
+    def generator_loss(self, d_fake: np.ndarray) -> float:
         """
         Calculate the loss of the generator as the negative reduced fake
         discriminator loss. The generator has the task of fooling the
@@ -244,9 +250,9 @@ class GAN:
             # uncommenting this line means that the noise is not paired with
             # the outputs (probably desirable)
             if self.unpair_noise:
-                noise = np.random.normal(
-                    size=[gan_input.shape[0], gan_input.shape[1]]
-                )
+                noise = self.random_generator(
+                    [gan_input.shape[0], gan_input.shape[1]]
+                    )
             else:
                 noise = gan_input
 
@@ -304,15 +310,17 @@ class GAN:
         print('ending training')
 
         # generate some random inputs and put through generator
-        test_input = tf.random.normal([10,
-                                       self.latent_space])
+        test_input = self.random_generator(
+            [gan_input.shape[0], gan_input.shape[1]]
+            )
+
         predictions = self.generator(test_input, training=False)
 
         predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
 
         # Reshaping the GAN output (in order to apply inverse scaling)
         predictions_np = predictions_np.reshape(
-            10*self.nsteps,
+            self.batches*self.nsteps,
             self.ndims)
 
         return predictions_np
