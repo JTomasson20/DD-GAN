@@ -4,6 +4,7 @@ Jón Atli Tómasson and Zef Wolffs
 
 __all__ = ['GAN']
 
+import glob
 import tensorflow as tf
 import numpy as np
 import sklearn
@@ -27,6 +28,7 @@ class GAN:
     seed: int = 143  # Random seed for reproducability
     epochs: int = 500  # Number of training epochs
     logs_location: str = './logs/gradient_tape/'
+    model_location: str = 'models/'
     gen_learning_rate: float = 0.0001  # Generator optimization learning rate
     disc_learning_rate: float = 0.0001  # Discriminator optimization learning
 
@@ -56,7 +58,7 @@ class GAN:
 
     random_generator = truncated_normal(mean=0, sd=1, low=4, upp=4)
 
-    def setup(self, direct=None) -> None:
+    def setup(self, find_old_model=False) -> None:
         """
         Setting up the neccecary values for the GAN class
 
@@ -76,7 +78,7 @@ class GAN:
             )
 
         self.make_logs()
-        self.make_GAN(folder=direct)
+        self.make_GAN(find_old_model=find_old_model)
 
     def make_logs(self) -> None:
         """
@@ -146,14 +148,34 @@ class GAN:
         self.discriminator.add(tf.keras.layers.Dense(
                                 1, kernel_initializer=self.initializer))
 
-    def make_GAN(self, folder=None) -> None:
+    def make_GAN(self, find_old_model=False) -> None:
         """
         Searching for an existing model, creating one from scratch
         if not found.
         """
-        print('making new generator and critic')
-        self.make_generator()
-        self.make_discriminator()
+        if find_old_model:
+            try:
+                print('looking for previous saved models')
+                g_dir = glob.glob('./' + self.model_location + 'saved_g_*')
+                d_dir = glob.glob('./' + self.model_location + 'saved_d_*')
+
+                if g_dir and g_dir:
+                    self.generator = tf.keras.models.load_model(g_dir[-1])
+                    self.discriminator = tf.keras.models.load_model(d_dir[-1])
+                else:
+                    print('making new generator and critic')
+                    self.make_generator()
+                    self.make_discriminator()
+
+            except OSError:
+                print('making new generator and critic')
+                self.make_generator()
+                self.make_discriminator()
+
+        else:
+            print('making new generator and critic')
+            self.make_generator()
+            self.make_discriminator()
 
     def discriminator_loss(self,
                            d_real: np.ndarray,

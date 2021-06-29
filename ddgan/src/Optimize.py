@@ -16,8 +16,7 @@ class Optimize:
     start_from: int = 100
     nPOD: int = 10
     nLatent: int = nPOD
-    iterations: int = 10
-    npredictions: int = 20
+    npredictions: int = 20  # Number of future steps
     optimizer_epochs: int = 5000
 
     gan: GAN = None
@@ -27,6 +26,7 @@ class Optimize:
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
+    @tf.function
     def mse_loss(self, input, output):
         if self.bounds is not None:
             if np.sum(tf.math.abs(input) > self.bounds) > 0:
@@ -119,7 +119,7 @@ class Optimize:
 
         return ip, loss_list, ip_np, init_latent, norm_latent_list
 
-    def timesteps(self, initial, inn, iterations):
+    def timesteps(self, initial, inn):
         """
         Outermost loop. Collecting the predicted points and
         iterating through predictions
@@ -127,7 +127,6 @@ class Optimize:
         Args:
             initial (np.ndarray): Initial value array
             inn (np.ndarray): Gan input array
-            iterations (int): Number of predicted points
 
         Returns:
             np.ndarray: Predicted points
@@ -137,12 +136,12 @@ class Optimize:
 
         losses_from_opt = []
         norm_latent_list = []
-        converged = np.zeros((iterations, self.nLatent))
-        latent = np.zeros((iterations, self.nLatent))
+        converged = np.zeros((self.npredictions, self.nLatent))
+        latent = np.zeros((self.npredictions, self.nLatent))
 
         current = tf.Variable(tf.zeros([1, self.gan.ndims]))
 
-        for i in range(iterations):
+        for i in range(self.npredictions):
             print('Time step: \t', i)
 
             updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
@@ -193,7 +192,7 @@ class Optimize:
                                                self.nLatent
                                                )
 
-        flds = self.timesteps(initial_comp, inn, self.npredictions)
+        flds = self.timesteps(initial_comp, inn)
         if scaling is not None:
             flds = scaling.inverse_transform(flds).T
 

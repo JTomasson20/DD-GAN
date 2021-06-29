@@ -58,7 +58,7 @@ def create_vtu_file(
 def reconstruct(
     snapshot_data_location="./../../data/FPC_Re3900_2D_CG_new/",
     snapshot_file_base="fpc_",
-    reconstructed_file="./velocity_field.npy",
+    reconstructed_file="./velocity_field.npy",  # POD coefficients
     nGrids=1,
     xlength=2.2,
     ylength=0.41,
