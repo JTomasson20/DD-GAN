@@ -56,7 +56,7 @@ class GAN:
                                                      stddev=0.05,
                                                      seed=seed)
 
-    random_generator = truncated_normal(mean=0, sd=1, low=4, upp=4)
+    random_generator = truncated_normal(mean=0, sd=1, low=-4, upp=4)
 
     def setup(self, find_old_model=False) -> None:
         """
