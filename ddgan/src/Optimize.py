@@ -26,7 +26,6 @@ class Optimize:
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
 
-    @tf.function
     def mse_loss(self, input, output):
 
         if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
