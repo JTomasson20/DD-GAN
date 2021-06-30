@@ -32,9 +32,11 @@ class Optimize:
             return 1.e5
 
         elif self.eigenvals is not None:
+            print(input.shape)
+            print(self.eigenvals.shape)
             return self.mse(
-                    tf.math.sqrt(self.eigenvals) * input,
-                    tf.math.sqrt(self.eigenvals) * output
+                tf.math.multiply(tf.math.sqrt(self.eigenvals), input),
+                tf.math.multiply(tf.math.sqrt(self.eigenvals), output)
                     )
         else:
             return self.mse(input, output)
