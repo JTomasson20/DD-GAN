@@ -6,11 +6,28 @@ __all__ = ['GAN']
 
 import glob
 import tensorflow as tf
+from keras import backend
+from keras.constraints import Constraint
 import numpy as np
 import sklearn
 import datetime
 from dataclasses import dataclass
 from ddgan.src.Utils import train_step, truncated_normal
+
+
+# clip model weights to a given hypercube
+class ClipConstraint(Constraint):
+    # set clip value when initialized
+    def __init__(self, clip_value):
+        self.clip_value = clip_value
+
+    # clip model weights to hypercube
+    def __call__(self, weights):
+        return backend.clip(weights, -self.clip_value, self.clip_value)
+
+    # get the config
+    def get_config(self):
+        return {'clip_value': self.clip_value}
 
 
 @dataclass(unsafe_hash=True)
@@ -56,7 +73,7 @@ class GAN:
                                                      stddev=0.05,
                                                      seed=seed)
 
-    random_generator = truncated_normal(mean=0, sd=1, low=-5, upp=5)
+    random_generator = truncated_normal(mean=0, sd=1, low=-6, upp=6)
 
     def setup(self, find_old_model=False) -> None:
         """
@@ -65,16 +82,12 @@ class GAN:
         Args:
             kwargs (dict): key-value pairs of input variables
         """
-        self.generator_opt = tf.keras.optimizers.Nadam(
-            learning_rate=self.gen_learning_rate,
-            beta_1=0,
-            beta_2=0.9
+        self.generator_opt = tf.keras.optimizers.RMSprop(
+            learning_rate=0.00005
             )
 
-        self.discriminator_opt = tf.keras.optimizers.Nadam(
-            learning_rate=self.disc_learning_rate,
-            beta_1=0,
-            beta_2=0.9
+        self.discriminator_opt = tf.keras.optimizers.RMSprop(
+            learning_rate=0.00005
             )
 
         self.make_logs()
@@ -127,20 +140,24 @@ class GAN:
         """
         Create the discriminator network
         """
+        const = ClipConstraint(0.01)
         self.discriminator = tf.keras.Sequential()
         self.discriminator.add(tf.keras.layers.Dense(
                                 self.ndims*self.nsteps,
                                 input_shape=(self.ndims*self.nsteps,),
-                                kernel_initializer=self.initializer))
+                                kernel_initializer=self.initializer,
+                                kernel_constraint=const))
 
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Dense(
-                                10, kernel_initializer=self.initializer))
+                                10, kernel_initializer=self.initializer,
+                                kernel_constraint=const))
 
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dense(
-                                5, kernel_initializer=self.initializer))
+                                5, kernel_initializer=self.initializer,
+                                kernel_constraint=const))
 
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
@@ -320,18 +337,4 @@ class GAN:
         self.train(training_data)
         print('ending training')
 
-        # generate some random inputs and put through generator
-        test_input = self.random_generator(
-            [training_data.shape[0], self.ndims]
-            )
-
-        predictions = self.generator(test_input, training=False)
-
-        predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
-
-        # Reshaping the GAN output (in order to apply inverse scaling)
-        predictions_np = predictions_np.reshape(
-            self.batches*self.nsteps,
-            self.ndims)
-
-        return predictions_np
+        return None
