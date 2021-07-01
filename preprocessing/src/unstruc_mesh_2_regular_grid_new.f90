@@ -307,7 +307,7 @@
 ! local variables...
       real toler,infiny
       logical test ! if test then perform a test of the element oriantation. 
-      parameter(toler=1.0e-10,infiny=1.e+10, test=.true.) 
+      parameter(toler=1.0e-10,infiny=1.e+10,test=.true.)
       real, allocatable :: mincork(:,:,:), dist2(:,:,:)
       real dx,dy,dz, xpt(ndim), loccords(nloc), loccords2(nloc), rsum
       real block_start_x, block_start_y, block_start_z, dist2ele
@@ -577,6 +577,9 @@
 ! 
 ! 
 ! 
+!       
+! 
+! 
 ! in python:
 ! value_remesh = u2r.interpolate_from_grid_to_mesh(value_grid, block_x_start, ddx, x_all, ireturn_zeros_outside_mesh,nscalar,nx,ny,nz,nNodes,ndim,nTime)
       subroutine interpolate_from_grid_to_mesh(value_mesh, value_grid, block_x_start, ddx, x_all, &
@@ -696,6 +699,430 @@
 ! 
 ! 
 
+! python call looks like:
+!      visc, u_mean = mean_diff_calc_nod(u_cell, dx,dy,dz, isotropic, ndim, nx,ny,nz, ntime)  
+!      subroutine mean_diff_calc_nod(visc, u_mean, u_cell, dx,dy,dz, & 
+       subroutine mean_diff_calc_nod(visc, u_mean, u_cell, ddx, isotropic, nx,ny,nz, ndim, ntime) 
+! *******************************************************************************************
+! This subroutine calculates the effective turbulent kinematic visocity visc and mean velocities u_mean from 
+! velocities u which change over time. 
+! *******************************************************************************************
+! visc= turbulent viscocity - cell centred
+! u_mean=mean velocities averaged over time - face centred. 
+! u=velocity at each time level
+! nx,ny,nz dimensions of the cells in x-,y-,z-directions
+! becuase we are using a staggered mesh for velocity u is defined on faces with dimensions u(ndim,nx+1,ny+1,nz+1,ntime) 
+! and similarly u_mean is on the faces of the cells. 
+! dx,dy,dz = cells sizes.
+! isotropic=1 if isotropic and =0 if anisotropic. 
+! ndim=no of dimensions e.g. 2 in 2D and 3 in 3D. 
+! ntime=no of time steps. 
+       implicit none
+!     real, intent( in ) :: dx,dy,dz
+       integer, intent( in ) :: nx,ny,nz, ndim, ntime
+       integer, intent( in ) :: isotropic
+       real, intent( out ) :: visc(ndim,nx,ny,nz)
+       real, intent( out ) :: u_mean(ndim,nx+1,ny+1,nz+1) 
+       real, intent( in ) :: u_cell(ndim,nx,ny,nz,ntime), ddx(ndim)
+
+! local variables...
+       integer i,j,k
+       REAL, ALLOCATABLE :: u(:,:,:,:,:)
+!       print *,'inside mean_diff_calc_nod'
+! 
+! calculate the face values u from the cell centred values u_cell. 
+       allocate( u(ndim,nx+1,ny+1,nz+1,ntime) )
+!      
+       u(:,1,:,:,:)=u_cell(:,1,:,:,:)
+       u(:,:,1,:,:)=u_cell(:,:,1,:,:)
+       u(:,:,:,1,:)=u_cell(:,:,:,1,:)
+!      
+       u(:,nx+1,:,:,:)=u_cell(:,nx,:,:,:)
+       u(:,:,ny+1,:,:)=u_cell(:,:,ny,:,:)
+       u(:,:,:,nz+1,:)=u_cell(:,:,:,nz,:)
+! 
+       do k=2,nz
+       do j=2,ny
+       do i=2,nx
+                    u(1,i,j,k,:) = 0.5*( u_cell(1,i-1,j,k,:) + u_cell(1,i,j,k,:) ) 
+                    u(2,i,j,k,:) = 0.5*( u_cell(2,i,j-1,k,:) + u_cell(2,i,j,k,:) ) 
+        if(ndim==3) u(3,i,j,k,:) = 0.5*( u_cell(3,i,j,k-1,:) + u_cell(3,i,j,k,:) ) 
+       end do
+       end do
+       end do
+
+! calculate visc, u_mean
+!         print *,'going into mean_diff_calc'
+!     call mean_diff_calc(visc, u_mean, u, u_cell, dx,dy,dz, isotropic, ndim, nx,ny,nz, ntime) 
+        call mean_diff_calc(visc, u_mean, u, u_cell, ddx, isotropic, nx,ny,nz, ndim, ntime) 
+!         print *,'exiting mean_diff_calc_nod'
+        return 
+        end subroutine mean_diff_calc_nod
+! 
+! 
+! python call looks like:
+!      visc, u_mean = mean_diff_calc(u, u_cell, dx,dy,dz, isotropic, ndim, nx,ny,nz, ntime)  
+      subroutine mean_diff_calc(visc, u_mean, u, u_cell, ddx, isotropic, nx,ny,nz, ndim, ntime) 
+! *******************************************************************************************
+! This subroutine calculates the effective turbulent kinematic visocity visc and mean velocities u_mean from 
+! velocities u which change over time. 
+! *******************************************************************************************
+! visc= turbulent viscocity
+! u_mean=mean velocities averaged over time
+! u=velocity at each time level
+! nx,ny,nz dimensions of the cells in x-,y-,z-directions
+! becuase we are using a staggered mesh for velocity u is defined on faces with dimensions u(ndim,nx+1,ny+1,nz+1,ntime) 
+! and similarly u_mean is on the faces of the cells. 
+! dx,dy,dz = cells sizes.
+! isotropic=1 if isotropic and =0 if anisotropic. 
+! ndim=no of dimensions e.g. 2 in 2D and 3 in 3D. 
+! ntime=no of time steps. 
+      implicit none
+      integer, intent( in ) :: isotropic, ndim, nx,ny,nz, ntime
+      real, intent( in ) :: u(ndim,nx+1,ny+1,nz+1,ntime), u_cell(ndim,nx,ny,nz,ntime)
+      real, intent( in ) :: ddx(ndim)
+      real, intent( out ) :: visc(ndim,nx,ny,nz), u_mean(ndim,nx+1,ny+1,nz+1) 
+! local variables...
+      real, parameter :: toler = 1.e-10
+      integer i_delta ! function
+      real determinant ! function
+      integer k,j,i,idim,jdim
+      real tau_mat(ndim,ndim), tau_res(ndim,ndim),dx_dim(ndim)
+      real mat_top(ndim,ndim), mat_bot(ndim,ndim)
+!      real dx,dy,dz
+      REAL, ALLOCATABLE :: u_mean_cell(:,:,:,:)
+
+!     dx=ddx(1); dy=ddx(2); if(ndim==3) dz=ddx(3)
+!     dx_dim(1)=dx; dx_dim(2)=dy; if(ndim==3) dx_dim(3)=dz
+      dx_dim=ddx
+! calculate the face values u from the cell centred values u_cell. 
+      allocate( u_mean_cell(ndim,nx,ny,nz) )
+     
+      do k=1,nz+1
+      do j=1,ny+1
+      do i=1,nx+1
+         do idim=1,ndim
+            u_mean(idim,i,j,k) = sum( u(idim,i,j,k,:) ) / real(ntime) 
+         end do
+      end do
+      end do
+      end do
+! 
+      do k=1,nz
+      do j=1,ny
+      do i=1,nx
+         do idim=1,ndim
+            u_mean_cell(idim,i,j,k) = sum( u_cell(idim,i,j,k,:) ) / real(ntime) 
+         end do
+      end do
+      end do
+      end do
+
+      do k=1,nz
+      do j=1,ny
+      do i=1,nx
+         do idim=1,ndim
+            do jdim=1,ndim
+               tau_mat(idim,jdim) = sum(u_cell(idim,i,j,k,:)*u_cell(jdim,i,j,k,:))/real(ntime)  &
+                                        - u_mean_cell(idim,i,j,k)*u_mean_cell(jdim,i,j,k) 
+! 
+! resolved stress from the mean vel u_mean:
+               tau_res(idim,jdim) =  &
+                 ( u_mean(jdim,i+i_delta(1,idim), j+ i_delta(2,idim ), k+i_delta(3,idim ))  &
+                                    - u_mean(jdim,i, j, k)   )  /dx_dim(idim)
+!                 ( u_mean(idim,i+i_delta(1,jdim), j+ i_delta(2,jdim ), k+i_delta(3,jdim ))  &
+!                                    - u_mean(idim,i, j, k)   )  /dx_dim(jdim)
+            end do
+         end do
+! matrix vector...
+         do idim=1,ndim
+            do jdim=1,ndim
+               mat_top(idim,jdim) = sum( tau_res(:,idim)*tau_mat(:,jdim) ) &
+                                  + sum( tau_mat(:,idim)*tau_res(:,jdim) )
+               mat_bot(idim,jdim) = sum( tau_res(:,idim)*tau_res(:,jdim) )
+            end do
+         end do
+         if(isotropic==1) then ! isotropic viscosity
+            visc(:,i,j,k) = max(0.0,  determinant(mat_top,ndim)/max(toler, 2.*determinant(mat_bot,ndim))  )
+         else ! anisotropic (diagonal viscocity)
+            do idim=1,ndim
+               visc(idim,i,j,k) = max(0.0,  mat_top(idim,idim) / max(toler, 2.*mat_bot(idim,idim))  )
+            end do 
+         endif
+      end do
+      end do
+      end do
+
+      return
+      end subroutine mean_diff_calc
+! 
+! 
+! 
+! python call looks like:
+!   resid_u, resid_cty, resid_c = residual_all_eqn( &
+!                       u_cell, c, &
+!                       sigma_u, s_u, p, density_u, mu_u, &
+!                       sigma_c, s_c, density_c, mu_c, rblank, &
+!                       dx,dy,dz, dt, ndim, nc, nx,ny,nz, ntime) 
+      subroutine residual_all_eqn(resid_u, resid_cty, resid_c, &
+                       u_cell, c, &
+                       sigma_u, s_u, p, density_u, mu_u, &
+                       sigma_c, s_c, density_c, mu_c, rblank, &
+                       dx,dy,dz, dt, ndim, nc, nx,ny,nz, ntime) 
+! *******************************************************************************************
+! This subroutine calculates the finite difference residual for the momentum equations (resid_u) 
+! the cty eqn (resid_cty) and the nc concentration eqns (resid_c). 
+! The residuals resid_u, resid_cty, resid_c are calculated between time levels and thus 
+! there are ntime-1 of them.
+! *******************************************************************************************
+! u_cell = cell-wise velocities at each time level.
+! c = cell-wise concetration field at each time levels. 
+! sigma_u = absorption of momentum coefficient - cell wise.
+! s_u = source of momentum coefficient - cell wise.
+! p = pressure for momentum eqns - cell wise.
+! density_u = density of momentum coefficient - cell wise.
+! mu_u = dynamic viscocity of momentum eqns - cell wise.
+! 
+! for the concentration eqns c: 
+! sigma_c = absorption of concentration coefficient - cell wise.
+! s_c = source of concentration field - cell wise.
+! density_c = density of momentum coefficient - cell wise.
+! mu_c = diffusion coefficient of concentration eqns - cell wise.
+! 
+! rblank(i,j,k)=1. then blank out the cell (set residuals to zero); rblank(i,j,k)=0. then calculate residual. 
+! 
+! becuase we are using a staggered mesh for velocity u is defined on faces with dimensions u(ndim,nx+1,ny+1,nz+1,ntime) 
+! and similarly u_mean is on the faces of the cells. 
+! dx,dy,dz = cells sizes.
+! dt= time step size. 
+! ndim=no of dimensions e.g. 2 in 2D and 3 in 3D. 
+! nc=no of concentration equations. 
+! nx,ny,nz dimensions of the cells in x-,y-,z-directions
+! ntime=no of time steps. 
+      implicit none
+      integer, intent( in ) :: ndim, nc, nx,ny,nz, ntime
+      real, intent( in ) :: u_cell(ndim,nx,ny,nz,ntime), c(nc,nx,ny,nz,ntime)
+      real, intent( in ) :: sigma_u(ndim,nx,ny,nz,ntime), s_u(ndim,nx,ny,nz,ntime), p(nx,ny,nz,ntime)
+      real, intent( in ) :: density_u(ndim,nx,ny,nz,ntime)
+      real, intent( in ) :: mu_u(ndim,nx,ny,nz,ntime), rblank(nx,ny,nz)
+      real, intent( in ) :: sigma_c(nc,nx,ny,nz,ntime), s_c(nc,nx,ny,nz,ntime), density_c(nc,nx,ny,nz,ntime)
+      real, intent( in ) :: mu_c(nc,nx,ny,nz,ntime)
+      real, intent( in ) :: dx,dy,dz, dt
+      real, intent( out ) :: resid_u(ndim,nx,ny,nz,ntime-1), resid_cty(nx,ny,nz,ntime-1), resid_c(nc,nx,ny,nz,ntime-1)
+! local variables...
+      real, parameter :: toler = 1.e-10
+      integer idim,pidim,itime,ic
+
+      REAL, ALLOCATABLE :: u_cell_mid(:,:,:,:), zero(:,:,:)
+      REAL, ALLOCATABLE :: sigma_u_mid(:,:,:), s_u_mid(:,:,:), p_mid(:,:,:), density_u_mid(:,:,:), mu_u_mid(:,:,:)
+! c: 
+      REAL, ALLOCATABLE :: c_mid(:,:,:) 
+      REAL, ALLOCATABLE :: sigma_c_mid(:,:,:), s_c_mid(:,:,:), density_c_mid(:,:,:), mu_c_mid(:,:,:)
+
+! calculate the face values u from the cell centred values u_cell. 
+      allocate( u_cell_mid(ndim,nx,ny,nz), zero(nx,ny,nz) )
+      allocate( sigma_u_mid(nx,ny,nz), s_u_mid(nx,ny,nz), p_mid(nx,ny,nz) )
+      allocate( density_u_mid(nx,ny,nz), mu_u_mid(nx,ny,nz) )
+! c: 
+      allocate( c_mid(nx,ny,nz) )
+      allocate(sigma_c_mid(nx,ny,nz), s_c_mid(nx,ny,nz), density_c_mid(nx,ny,nz), mu_c_mid(nx,ny,nz) )
+      zero=0.0
+
+      do itime=1,ntime-1
+
+         u_cell_mid = 0.5*( u_cell(:,:,:,:,itime+1) + u_cell(:,:,:,:,itime) ) 
+
+! momentum/velocity residual...     
+         do idim=1,ndim
+            sigma_u_mid = 0.5*( sigma_u(idim,:,:,:,itime+1) + sigma_u(idim,:,:,:,itime) )
+            s_u_mid = 0.5*( s_u(idim,:,:,:,itime+1) + s_u(idim,:,:,:,itime) )
+            p_mid = 0.5*( p(:,:,:,itime+1) + p(:,:,:,itime) )
+            density_u_mid = 0.5*( density_u(idim,:,:,:,itime+1) + density_u(idim,:,:,:,itime) )
+            mu_u_mid = 0.5*( mu_u(idim,:,:,:,itime+1) + mu_u(idim,:,:,:,itime) )
+            pidim = idim 
+
+            call residual_c_eqn(resid_u(idim,:,:,:,itime), u_cell(idim,:,:,:,itime+1), &
+                 u_cell(idim,:,:,:,itime), u_cell_mid(idim,:,:,:), u_cell_mid, &
+                 sigma_u_mid, s_u_mid, p_mid, density_u_mid, mu_u_mid, rblank, &
+                 dx,dy,dz, dt, pidim, ndim, nx,ny,nz) 
+
+         end do ! do idim=1,ndim
+! cty eqn... 
+         call residual_cty(resid_cty(:,:,:,itime), u_cell_mid, rblank, &
+                          dx,dy,dz, ndim, nx,ny,nz) 
+!
+         do ic=1,nc ! concentration eqns...
+! concentration c: 
+            c_mid = 0.5*( c(ic,:,:,:,itime+1) + c(ic,:,:,:,itime) )
+            sigma_c_mid(:,:,:) = 0.5*( sigma_c(ic,:,:,:,itime+1) + sigma_c(ic,:,:,:,itime) )
+            s_c_mid(:,:,:)  = 0.5*( s_c(ic,:,:,:,itime+1) + s_c(ic,:,:,:,itime) )
+            density_c_mid(:,:,:) = 0.5*( density_c(ic,:,:,:,itime+1) + density_c(ic,:,:,:,itime) )
+            mu_c_mid(:,:,:) = 0.5*( mu_c(ic,:,:,:,itime+1) + mu_c(ic,:,:,:,itime) )
+            pidim = 0
+
+            call residual_c_eqn(resid_c(ic,:,:,:,itime), c(ic,:,:,:,itime+1), c(ic,:,:,:,itime), &
+                       c_mid, u_cell_mid, &
+                       sigma_c_mid, s_c_mid, zero, density_c_mid, mu_c_mid, rblank, &
+                       dx,dy,dz, dt, pidim, ndim, nx,ny,nz)
+
+         end do ! do ic=1,nc
+
+      end do ! do itime=1,ntime-1
+
+      return
+      end subroutine residual_all_eqn
+! 
+! 
+! 
+! 
+! python call looks like:
+!      resid = residual_c_eqn(c_new, c_old, &
+!                       c, u_cell, &
+!                       sigma, s, p, density, mu, rblank, &
+!                       dx,dy,dz, dt, pidim, ndim, nx,ny,nz) 
+      subroutine residual_c_eqn(resid, c_new, c_old, &
+                       c, u_cell, &
+                       sigma, s, p, density, mu, rblank, &
+                       dx,dy,dz, dt, pidim, ndim, nx,ny,nz) 
+! *******************************************************************************************
+! This subroutine calculates the finite difference residual for the concentration equations (resid) 
+! but can also be used for momentum eqns.  
+! The residual resid is calculated between time levels. 
+! *******************************************************************************************
+! c_new = cell-wise concentration at end of time step. 
+! c_old = cell-wise concentration at start of time step. 
+! c = cell-wise concentration averaged between time levels.
+! u_cell = cell-wise velocities averaged between time levels.
+! 
+! material coeficients: 
+! sigma = absorption of concentration coefficient - cell wise.
+! s = source of concentration field - cell wise.
+! p = pressure - cell wise. 
+! density = density of momentum coefficient - cell wise.
+! mu = diffusion coefficient of concentration eqns - cell wise.
+! 
+! rblank(i,j,k)=1. then blank out the cell (set residuals to zero); rblank(i,j,k)=0. then calculate residual. 
+! 
+! dx,dy,dz = cells sizes.
+! dt= time step size. 
+! ndim=no of dimensions e.g. 2 in 2D and 3 in 3D. 
+! nx,ny,nz dimensions of the cells in x-,y-,z-directions
+      implicit none
+      integer, intent( in ) :: pidim, ndim, nx,ny,nz
+      real, intent( in ) :: c_new(nx,ny,nz), c_old(nx,ny,nz), c(nx,ny,nz), u_cell(ndim,nx,ny,nz)
+      real, intent( in ) :: sigma(nx,ny,nz), s(nx,ny,nz), p(nx,ny,nz), density(nx,ny,nz)
+      real, intent( in ) :: mu(nx,ny,nz), rblank(nx,ny,nz)
+      real, intent( in ) :: dx,dy,dz, dt
+      real, intent( out ) :: resid(nx,ny,nz) 
+! local variables...
+      real, parameter :: toler = 1.e-10
+      real dx_dim(ndim)
+      integer i_delta ! function
+      integer k,j,i,idim, k_start, k_finish
+
+      dx_dim(1)=dx; dx_dim(2)=dy; if(ndim==3) dx_dim(3)=dz
+! calculate the face values u from the cell centred values u_cell. 
+      k_start=2
+      k_finish=nz-1
+      if((ndim==2).and.(nz==1)) then
+        k_start=1
+        k_finish=1
+      endif
+     
+      resid=0.0
+      do k=k_start,k_finish
+      do j=2,ny-1
+      do i=2,nx-1
+         resid(i,j,k) = density(i,j,k)*(c_new(i,j,k)-c_old(i,j,k))/dt + sigma(i,j,k)*c(i,j,k) - s(i,j,k)
+         do idim=1,ndim
+! non-linear terms...
+              resid(i,j,k) =resid(i,j,k) + density(i,j,k)*u_cell(idim,i,j,k) &
+            * (   c(i+i_delta(1,idim),j+ i_delta(2,idim ), k+i_delta(3,idim )) &
+                - c(i-i_delta(1,idim),j- i_delta(2,idim ), k-i_delta(3,idim )) )/(2.*dx_dim(idim)) &
+! diffusion term...
+      + mu(i,j,k)*(  -c(i+i_delta(1,idim),j+ i_delta(2,idim ), k+i_delta(3,idim )) &
+                  +2.*c(i,j,k)  &
+                     -c(i-i_delta(1,idim),j- i_delta(2,idim ), k-i_delta(3,idim )) )/(dx_dim(idim)**2) &
+! pressure term...
+      + real(i_delta(pidim,idim))*(   p(i+i_delta(1,idim),j+ i_delta(2,idim ), k+i_delta(3,idim )) &
+                                    - p(i-i_delta(1,idim),j- i_delta(2,idim ), k-i_delta(3,idim )) )/(2.*dx_dim(idim)) 
+         end do
+      end do
+      end do
+      end do
+      resid=resid*(1.0-rblank)
+
+      return
+      end subroutine residual_c_eqn
+! 
+! 
+! 
+! python call looks like:
+!      resid_cty = residual_cty(u_cell, rblank, &
+!                         dx,dy,dz, ndim, nx,ny,nz)  
+      subroutine residual_cty(resid_cty, u_cell, rblank, &
+                       dx,dy,dz, ndim, nx,ny,nz) 
+! *******************************************************************************************
+! This subroutine calculates the finite difference residual for the cty equation (resid_cty). 
+! *******************************************************************************************
+! u_cell = cell-wise velocities averaged between time levels.
+! 
+! rblank(i,j,k)=1. then blank out the cell (set residuals to zero) =0. calcul residual. 
+! 
+! dx,dy,dz = cells sizes.
+! dt= time step size. 
+! ndim=no of dimensions e.g. 2 in 2D and 3 in 3D. 
+      implicit none
+      integer, intent( in ) :: ndim, nx,ny,nz
+      real, intent( in ) :: u_cell(ndim,nx,ny,nz)
+      real, intent( in ) :: rblank(nx,ny,nz)
+      real, intent( in ) :: dx,dy,dz
+      real, intent( out ) :: resid_cty(nx,ny,nz) 
+! local variables...
+      real, parameter :: toler = 1.e-10
+      real dx_dim(ndim)
+      integer i_delta ! function
+      integer k,j,i,idim, k_start, k_finish 
+
+      dx_dim(1)=dx; dx_dim(2)=dy; if(ndim==3) dx_dim(3)=dz
+! calculate the face values u from the cell centred values u_cell. 
+      k_start=2
+      k_finish=nz-1
+      if((ndim==2).and.(nz==1)) then
+        k_start=1
+        k_finish=1
+      endif
+     
+      resid_cty=0.0
+      do k=k_start,k_finish
+      do j=2,ny-1
+      do i=2,nx-1
+         do idim=1,ndim
+! non-linear terms...
+              resid_cty(i,j,k) =resid_cty(i,j,k)  &
+            + (   u_cell(idim,i+i_delta(1,idim),j+ i_delta(2,idim ), k+i_delta(3,idim )) &
+                - u_cell(idim,i-i_delta(1,idim),j- i_delta(2,idim ), k-i_delta(3,idim )) )/(2.*dx_dim(idim)) 
+         end do
+      end do
+      end do
+      end do
+      resid_cty=resid_cty*(1.-rblank)
+
+      return
+      end subroutine residual_cty
+! 
+! 
+! 
+! 
+      integer function i_delta(idim,jdim)
+      implicit none
+! i_delta(idim,jdim)=1 if idim=jdim else =0
+      integer idim,jdim
+      i_delta = 1-min(1, abs(idim-jdim) ) 
+      end function i_delta
+! 
+! 
+
 ! 
         SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS, X_CORNERS_ALL, NDIM,CV_NLOC)
 ! obtain the local coordinates LOCCORDS from a pt in or outside the tet/triangle Xpt
@@ -709,11 +1136,11 @@
             IF (NDIM==3) THEN
 
                 CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
-                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4), &
 ! The 4 corners of the tet...
-                    X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
-                    X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
-                    X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
+                    X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1), &
+                    X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2), &
+                    X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3), &
                     X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
             ELSE
                 CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
@@ -731,7 +1158,7 @@
 !    
 !     	
     !sprint_to_do!think about this
-    Subroutine TRILOCCORDS(Xp,Yp,Zp,N1, N2, N3, N4, X1,Y1,Z1, X2,Y2,Z2, X3,Y3,Z3, X4,Y4,Z4  )
+    Subroutine TRILOCCORDS(Xp,Yp,Zp,N1, N2, N3, N4, X1,Y1,Z1, X2,Y2,Z2, X3,Y3,Z3, X4,Y4,Z4)
 
         IMPLICIT NONE
         Real Xp, Yp, Zp
@@ -861,7 +1288,54 @@
     end subroutine triloccords2d
 ! 
 ! 
+! 
+! 
+!      real function determin(mat,ndim)
+      real function determinant(mat,ndim)
+      IMPLICIT NONE
+      integer, intent(in) :: ndim
+      real, intent(in) :: mat(ndim,ndim) 
+!      real, intent(out) :: determin
+! 
+  ! Local variables
+      REAL :: AGI, BGI, CGI, DGI, EGI, FGI, GGI, HGI, KGI
+!      real :: detj
 
+      if(ndim==2) then
+   ! conventional:
+! matrix is: 
+! (  AGI,  BGI  )
+! ( CGI,  DGI  )
+! 
+          AGI=mat(1,1);  BGI=mat(1,2) 
+          CGI=mat(2,1);  DGI=mat(2,2) 
+
+          determinant= AGI*DGI-BGI*CGI
+    !jac(1) = AGI; jac(2) = DGI ; jac(3) = BGI ; jac(4) = EGI
+
+      else if ( ndim.eq.3 ) then
+! matrix is: 
+!       ( AGI, BGI, CGI )
+!       ( DGI, EGI, FGI )
+!       ( GGI, HGI, KGI )
+! matrix is: 
+            AGI=mat(1,1); BGI=mat(1,2); CGI=mat(1,3)
+            DGI=mat(2,1); EGI=mat(2,2); FGI=mat(2,3)
+            GGI=mat(3,1); HGI=mat(3,2); KGI=mat(3,3)
+
+          determinant=AGI*(EGI*KGI-FGI*HGI) &
+              -BGI*(DGI*KGI-FGI*GGI) &
+              +CGI*(DGI*HGI-EGI*GGI)
+      else 
+         stop 819
+      end if
+!      determin=detj
+      return
+      end function determinant
+! 
+! 
+! 
+! 
   real function triareaf_SIGN( x1, y1, x2, y2, x3, y3 )
     implicit none
     real :: x1, y1, x2, y2, x3, y3

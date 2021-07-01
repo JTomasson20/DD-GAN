@@ -5,6 +5,14 @@ from utils import get_grid_end_points
 import argparse
 import os
 
+__author__ = " Claire Heaney, Zef Wolffs"
+__credits__ = ["Jon Atli Tomasson"]
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Zef Wolffs"
+__email__ = "zefwolffs@gmail.com"
+__status__ = "Development"
+
 
 def get_clean_vtk_file(filename):
     "Removes fields and arrays from a vtk file, leaving the coordinates/connectivity information."

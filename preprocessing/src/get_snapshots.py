@@ -4,6 +4,14 @@ import numpy as np
 from utils import get_grid_end_points
 import argparse
 
+__author__ = " Claire Heaney, Zef Wolffs"
+__credits__ = ["Jon Atli Tomasson"]
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Zef Wolffs"
+__email__ = "zefwolffs@gmail.com"
+__status__ = "Development"
+
 
 def get_subgrid_snapshots(data_dir='./../../data/FPC_Re3900_2D_CG_old/',
                           data_file_base='fpc_2D_Re3900_CG_',
