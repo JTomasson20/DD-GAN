@@ -2,7 +2,6 @@ import u2r
 import vtktools
 import numpy as np
 from utils import get_grid_end_points
-import argparse
 import os
 
 __author__ = " Claire Heaney, Zef Wolffs"
@@ -15,7 +14,10 @@ __status__ = "Development"
 
 
 def get_clean_vtk_file(filename):
-    "Removes fields and arrays from a vtk file, leaving the coordinates/connectivity information."
+    """
+    Removes fields and arrays from a vtk file,
+    leaving the coordinates/connectivity information.
+    """
     vtu_data = vtktools.vtu(filename)
     clean_vtu = vtktools.vtu()
     clean_vtu.ugrid.DeepCopy(vtu_data.ugrid)
@@ -33,19 +35,21 @@ def get_clean_vtk_file(filename):
     return clean_vtu
 
 
-# (nNodes, reconstruction_on_mesh[iTime*nScalar:(iTime+1)*nScalar,:], template_vtu, original_data[0][iTime*nDim:(iTime+1)*nDim], iTime)
 def create_vtu_file(
     path, nNodes, value_mesh_twice_interp, filename, orig_vel, iTime, nDim=2
 ):
     velocity_field = np.zeros((nNodes, 3))
     velocity_field[:, 0:nDim] = np.transpose(
         value_mesh_twice_interp[0:nDim, :]
-    )  # streamwise component only
+    )
 
+    # streamwise component only
     difference = np.zeros((nNodes, 3))
     difference[:, 0:nDim] = (
         np.transpose(value_mesh_twice_interp[0:nDim, :]) - orig_vel
-    )  # streamwise component only
+    )
+
+    # streamwise component only
     difference = difference / np.max(velocity_field)
 
     clean_vtk = get_clean_vtk_file(filename)
@@ -62,13 +66,13 @@ def create_vtu_file(
 def reconstruct(
     snapshot_data_location="./../../data/FPC_Re3900_2D_CG_new/",
     snapshot_file_base="fpc_",
-    reconstructed_file="./reconstruction_pod_10coeffs.npy",
-    nGrids=4,
+    reconstructed_file="./velocity_field.npy",  # POD coefficients
+    nGrids=1,
     xlength=2.2,
     ylength=0.41,
-    nTime=2000,
+    nTime=300,
     field_names=["Velocity"],
-    offset=0,
+    offset=0
 ):
 
     nFields = len(field_names)
@@ -81,14 +85,14 @@ def reconstruct(
     nNodes = coordinates.shape[0]  # vtu_data.ugrid.GetNumberOfPoints()
     nEl = representative_vtu.ugrid.GetNumberOfCells()
     nScalar = 2  # dimension of fields
-    nDim = 2  # dimension of problem (no need to interpolate in the third dimension)
+    nDim = 2  # dimension of problem (no need to interpolate in dim no 3)
     nloc = 3  # number of local nodes, ie three nodes per element (in 2D)
 
     # get global node numbers
     x_ndgln = np.zeros((nEl * nloc), dtype=int)
     for iEl in range(nEl):
         n = representative_vtu.GetCellPoints(iEl) + 1
-        x_ndgln[iEl * nloc : (iEl + 1) * nloc] = n
+        x_ndgln[iEl * nloc: (iEl + 1) * nloc] = n
 
     # set grid size
     if nGrids == 4:
@@ -188,7 +192,7 @@ def reconstruct(
 
         for iTime in range(nTime):
 
-            zeros_beyond_grid = 1  # 0 extrapolate solution; 1 gives zeros for nodes outside grid
+            zeros_beyond_grid = 1  # 0 extrapolate solution; 1 gives zeros
             reconstruction_on_mesh_from_one_grid = (
                 u2r.interpolate_from_grid_to_mesh(
                     reconstruction_grid[:, :, :, iTime],
@@ -206,11 +210,10 @@ def reconstruct(
                 )
             )
 
-            # print('reconstruction_on_mesh_from_one_grid - about to add solutions',reconstruction_on_mesh_from_one_grid.shape)
             reconstruction_on_mesh[
-                nScalar * iTime : nScalar * (iTime + 1), :
+                nScalar * iTime: nScalar * (iTime + 1), :
             ] = reconstruction_on_mesh[
-                nScalar * iTime : nScalar * (iTime + 1), :
+                nScalar * iTime: nScalar * (iTime + 1), :
             ] + np.squeeze(
                 reconstruction_on_mesh_from_one_grid
             )
@@ -224,10 +227,6 @@ def reconstruct(
     #    original_data.append(np.zeros((nNodes, nDim*nTime)))
     original = np.zeros((nNodes, nDim * nTime))
     for iTime in range(nTime):
-
-        # print('')
-        # print('time level', iTime)
-
         filename = (
             snapshot_data_location
             + snapshot_file_base
@@ -236,13 +235,9 @@ def reconstruct(
         )
         vtu_data = vtktools.vtu(filename)
 
-        # original = np.zeros((nNodes, nDim*nTime))
-
         for iField in range(nFields):
-
-            # vtu_data = vtktools.vtu(filename)
             my_field = vtu_data.GetField(field_names[iField])[:, 0:nDim]
-            original[:, iTime * nDim : (iTime + 1) * nDim] = my_field
+            original[:, iTime * nDim: (iTime + 1) * nDim] = my_field
 
     # make diretory for results
     path_to_reconstructed_results = "reconstructed_results/"
@@ -251,15 +246,12 @@ def reconstruct(
 
     template_vtu = snapshot_data_location + snapshot_file_base + "0.vtu"
     for iTime in range(nTime):
-
-        # for more than one field, will this work?
-        # create_vtu_file_timelevel(nNodes, reconstruction_on_mesh[iTime*nScalar:(iTime+1)*nScalar,:], template_vtu, iTime)
         create_vtu_file(
             path_to_reconstructed_results,
             nNodes,
-            reconstruction_on_mesh[iTime * nScalar : (iTime + 1) * nScalar, :],
+            reconstruction_on_mesh[iTime * nScalar: (iTime + 1) * nScalar, :],
             template_vtu,
-            original[:, iTime * nDim : (iTime + 1) * nDim],
+            original[:, iTime * nDim: (iTime + 1) * nDim],
             iTime,
         )
 

@@ -1,8 +1,9 @@
 import numpy as np
 import tensorflow as tf
 import random
+from scipy.stats import truncnorm
 
-__all__ = ['set_seed', 'train_step']
+__all__ = ['set_seed', 'train_step', 'truncated_normal']
 
 
 def set_seed(seed):
@@ -15,6 +16,24 @@ def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
+
+
+def truncated_normal(mean=0., sd=1., low=-4., upp=4.):
+    """
+    Generating a trunicated scipy random number generator
+
+    Args:
+        mean (float, optional): mean of the distribution. Defaults to 0.
+        sd (float, optional): standard deviation. Defaults to 1.
+        low (float, optional): lower bound. Defaults to -5.
+        upp (float, optional): upper bound. Defaults to 5.
+
+    Returns:
+        scipy.stats obj: trunicated normal distribution rng
+    """
+    return truncnorm(
+        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd
+        ).rvs
 
 
 # Clashes when trying to include this within the GAN class

@@ -16,13 +16,30 @@ class Optimize:
     start_from: int = 100
     nPOD: int = 10
     nLatent: int = nPOD
-    iterations: int = 10
-    npredictions: int = 20
+    npredictions: int = 20  # Number of future steps
     optimizer_epochs: int = 5000
+
     gan: GAN = None
+    eigenvals: np.ndarray = None
+    bounds: float = 4.0  # set to inf if not in use
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
+
+    def mse_loss(self, input, output):
+
+        if tf.math.reduce_max(tf.math.abs(output)) > self.bounds:
+            return 1.e5
+
+        elif self.eigenvals is not None:
+            print(input.shape)
+            print(self.eigenvals.shape)
+            return self.mse(
+                tf.math.multiply(tf.math.sqrt(self.eigenvals), input),
+                tf.math.multiply(tf.math.sqrt(self.eigenvals), output)
+                    )
+        else:
+            return self.mse(input, output)
 
     @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
@@ -43,8 +60,9 @@ class Optimize:
             tape.watch(latent_var)
             r = self.gan.generator(latent_var, training=False)
 
-            loss = self.mse(output,
-                            r[:, :self.gan.ndims*(self.gan.nsteps - 1)])
+            loss = self.mse_loss(output,
+                                 r[:, :self.gan.ndims*(self.gan.nsteps - 1)]
+                                 )
 
         gradients = tape.gradient(loss, latent_var)
         self.optimizer.apply_gradients(zip([gradients], [latent_var]))
@@ -78,16 +96,12 @@ class Optimize:
             np.ndarray: Initial z values
             list: Norm of latent variables
         """
-        inputs = []
-        losses = []
 
         loss_list = []
         norm_latent_list = []
-
         init_latent = prev_latent.numpy()
 
         for j in range(attempts):
-
             ip = prev_latent
 
             for epoch in range(self.optimizer_epochs):
@@ -104,12 +118,9 @@ class Optimize:
 
             ip_np = ip.numpy()
 
-            inputs.append(ip_np)
-            losses.append(loss.numpy())
-
         return ip, loss_list, ip_np, init_latent, norm_latent_list
 
-    def timesteps(self, initial, inn, iterations):
+    def timesteps(self, initial, inn):
         """
         Outermost loop. Collecting the predicted points and
         iterating through predictions
@@ -117,7 +128,6 @@ class Optimize:
         Args:
             initial (np.ndarray): Initial value array
             inn (np.ndarray): Gan input array
-            iterations (int): Number of predicted points
 
         Returns:
             np.ndarray: Predicted points
@@ -127,12 +137,12 @@ class Optimize:
 
         losses_from_opt = []
         norm_latent_list = []
-        converged = np.zeros((iterations, self.nLatent))
-        latent = np.zeros((iterations, self.nLatent))
+        converged = np.zeros((self.npredictions, self.nLatent))
+        latent = np.zeros((self.npredictions, self.nLatent))
 
         current = tf.Variable(tf.zeros([1, self.gan.ndims]))
 
-        for i in range(iterations):
+        for i in range(self.npredictions):
             print('Time step: \t', i)
 
             updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
@@ -179,11 +189,11 @@ class Optimize:
 
         initial_comp = training_data[self.start_from,
                                      :(self.gan.nsteps-1)*self.nPOD
-                                     ].reshape(
-                                         (self.gan.nsteps - 1),
-                                         self.nLatent)
+                                     ].reshape(self.gan.nsteps - 1,
+                                               self.nLatent
+                                               )
 
-        flds = self.timesteps(initial_comp, inn, self.npredictions)
+        flds = self.timesteps(initial_comp, inn)
         if scaling is not None:
             flds = scaling.inverse_transform(flds).T
 

@@ -11,6 +11,7 @@ dependencies:
   - numpy
   - keras==2.2.4
   - pandas
+  - scipy
   - pip:
     - tensorflow-gpu==1.10.0
     - scikit-learn

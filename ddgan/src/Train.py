@@ -4,12 +4,13 @@ Jón Atli Tómasson and Zef Wolffs
 
 __all__ = ['GAN']
 
+import glob
 import tensorflow as tf
 import numpy as np
 import sklearn
 import datetime
 from dataclasses import dataclass
-from ddgan.src.Utils import train_step
+from ddgan.src.Utils import train_step, truncated_normal
 
 
 @dataclass(unsafe_hash=True)
@@ -27,11 +28,12 @@ class GAN:
     seed: int = 143  # Random seed for reproducability
     epochs: int = 500  # Number of training epochs
     logs_location: str = './logs/gradient_tape/'
+    model_location: str = 'models/'
     gen_learning_rate: float = 0.0001  # Generator optimization learning rate
     disc_learning_rate: float = 0.0001  # Discriminator optimization learning
 
     latent_space: int = 10  # Dimensionality of the latent space
-    unpair_noise: bool = False  # Make input noise each iteration if true
+    unpair_noise: bool = True  # Make input noise each iteration if true
 
     # Objects - Can be filled in at bootup and skip calling setup
     # Remember to make logs if doing so
@@ -50,10 +52,13 @@ class GAN:
     d_summary_writer = None
     w_summary_writer = None
 
-    initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.05,
+    initializer = tf.keras.initializers.RandomNormal(mean=0.0,
+                                                     stddev=0.05,
                                                      seed=seed)
 
-    def setup(self) -> None:
+    random_generator = truncated_normal(mean=0, sd=1, low=-5, upp=5)
+
+    def setup(self, find_old_model=False) -> None:
         """
         Setting up the neccecary values for the GAN class
 
@@ -73,7 +78,7 @@ class GAN:
             )
 
         self.make_logs()
-        self.make_GAN()
+        self.make_GAN(find_old_model=find_old_model)
 
     def make_logs(self) -> None:
         """
@@ -143,16 +148,39 @@ class GAN:
         self.discriminator.add(tf.keras.layers.Dense(
                                 1, kernel_initializer=self.initializer))
 
-    def make_GAN(self, folder='models/') -> None:
+    def make_GAN(self, find_old_model=False) -> None:
         """
         Searching for an existing model, creating one from scratch
         if not found.
         """
-        print('making new generator and critic')
-        self.make_generator()
-        self.make_discriminator()
+        if find_old_model:
+            try:
+                print('looking for previous saved models')
+                g_dir = glob.glob('./' + self.model_location + 'saved_g_*')
+                d_dir = glob.glob('./' + self.model_location + 'saved_c_*')
 
-    def discriminator_loss(self, d_real: float, d_fake: float) -> float:
+                if g_dir and d_dir:
+                    self.generator = tf.keras.models.load_model(g_dir[-1])
+                    self.discriminator = tf.keras.models.load_model(d_dir[-1])
+                else:
+                    print('making new generator and critic')
+                    self.make_generator()
+                    self.make_discriminator()
+
+            except OSError:
+                print('making new generator and critic')
+                self.make_generator()
+                self.make_discriminator()
+
+        else:
+            print('making new generator and critic')
+            self.make_generator()
+            self.make_discriminator()
+
+    def discriminator_loss(self,
+                           d_real: np.ndarray,
+                           d_fake: np.ndarray
+                           ) -> float:
         """
         Calculate the loss for the discriminator as the sum of the reduced
         real and fake discriminator losses
@@ -166,7 +194,7 @@ class GAN:
         """
         return tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
 
-    def generator_loss(self, d_fake: float) -> float:
+    def generator_loss(self, d_fake: np.ndarray) -> float:
         """
         Calculate the loss of the generator as the negative reduced fake
         discriminator loss. The generator has the task of fooling the
@@ -226,29 +254,21 @@ class GAN:
 
     def train(self,
               training_data: np.ndarray,
-              gan_input: np.ndarray
               ) -> None:
         """
         Training the GAN
 
         Args:
             training_data (np.ndarray): Actual values for comparison
-            gan_input(np.ndarray): Random input values in the shape n x Dims
         """
         losses = np.zeros((self.epochs, 4))
 
         for epoch in range(self.epochs):
             print('epoch: \t', epoch)
-            # real_data = training_data  # X1.astype('int')
 
-            # uncommenting this line means that the noise is not paired with
-            # the outputs (probably desirable)
-            if self.unpair_noise:
-                noise = np.random.normal(
-                    size=[gan_input.shape[0], gan_input.shape[1]]
+            noise = self.random_generator(
+                [training_data.shape[0], self.ndims]
                 )
-            else:
-                noise = gan_input
 
             # shuffle each epoch
             real_data, noise = sklearn.utils.shuffle(training_data, noise)
@@ -283,15 +303,12 @@ class GAN:
         np.savetxt('losses.csv', losses, delimiter=',')
 
     def learn_hypersurface_from_POD_coeffs(self,
-                                           gan_input,
                                            training_data):
         """
         Make and train a model
 
         Args:
-            gan_input ([type]): random input
             training_data ([type]): [description]
-            ndims_latent_input ([type]): [description]
 
         Returns:
             [type]: [description]
@@ -300,19 +317,21 @@ class GAN:
         self.make_logs()
 
         print('beginning training')
-        self.train(training_data, gan_input)
+        self.train(training_data)
         print('ending training')
 
         # generate some random inputs and put through generator
-        test_input = tf.random.normal([10,
-                                       self.latent_space])
+        test_input = self.random_generator(
+            [training_data.shape[0], self.ndims]
+            )
+
         predictions = self.generator(test_input, training=False)
 
         predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
 
         # Reshaping the GAN output (in order to apply inverse scaling)
         predictions_np = predictions_np.reshape(
-            10*self.nsteps,
+            self.batches*self.nsteps,
             self.ndims)
 
         return predictions_np
