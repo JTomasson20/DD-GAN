@@ -151,13 +151,11 @@ class GAN:
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
         self.discriminator.add(tf.keras.layers.Dense(
-                                10, kernel_initializer=self.initializer,
-                                kernel_constraint=const))
+                                10, kernel_initializer=self.initializer))
 
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dense(
-                                5, kernel_initializer=self.initializer,
-                                kernel_constraint=const))
+                                5, kernel_initializer=self.initializer))
 
         self.discriminator.add(tf.keras.layers.LeakyReLU(alpha=0.2))
         self.discriminator.add(tf.keras.layers.Dropout(0.3))
