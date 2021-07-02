@@ -67,7 +67,7 @@ def get_snapshots_3D(
         if not random:
             ndatapoints = 10
 
-        for i in range(offset, ndatapoints):
+        for i in range(offset, offset+ndatapoints):
             velocity_mesh = np.zeros(
                 (nscalar_velocity, nNodes, nTime)
             )  # value_mesh(nscalar,nonods,ntime)
