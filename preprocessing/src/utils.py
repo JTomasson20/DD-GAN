@@ -61,8 +61,13 @@ def get_grid_info(grid_info):
 
 
 def get_grid_end_points(grid_origin, grid_width, iGrid):
-    return np.array((grid_origin[0]+iGrid*grid_width[0], grid_origin[1] +
-                     iGrid*grid_width[1]))
+    if len(grid_origin) == 2:
+        return np.array((grid_origin[0]+iGrid*grid_width[0], grid_origin[1] +
+                        iGrid*grid_width[1]))
+    elif len(grid_origin) == 3:
+        return np.array((grid_origin[0]+iGrid*grid_width[0], grid_origin[1] +
+                        iGrid*grid_width[1], grid_origin[2] +
+                        iGrid*grid_width[2]))
 
 
 def get_global_node_numbers(nEl, nloc, represnetative_vtu):
