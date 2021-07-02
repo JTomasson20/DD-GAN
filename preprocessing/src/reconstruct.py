@@ -66,14 +66,32 @@ def create_vtu_file(
 def reconstruct(
     snapshot_data_location="./../../data/FPC_Re3900_2D_CG_new/",
     snapshot_file_base="fpc_",
-    reconstructed_file="./velocity_field.npy",  # POD coefficients
-    nGrids=1,
+    reconstructed_file="reconstruction_test.npy",  # POD coefficients
+    nGrids=4,
     xlength=2.2,
     ylength=0.41,
     nTime=300,
     field_names=["Velocity"],
     offset=0
 ):
+    """
+    Requires data in format (ngrids, nscalar, nx, ny, ntime)
+
+    Args:
+        snapshot_data_location (str, optional): location of sample vtu file.
+                                                Defaults to
+                                                "./../../data/FPC_Re3900_2D_CG_new/".
+        snapshot_file_base (str, optional): file base of sample vtu file.
+                                            Defaults to "fpc_".
+        reconstructed_file (str, optional): reconstruction data file. Defaults
+                                            to "reconstruction_test.npy".
+        xlength (float, optional): length in x direction. Defaults to 2.2.
+        ylength (float, optional): length in y direction. Defaults to 0.41.
+        nTime (int, optional): number of timesteps. Defaults to 300.
+        field_names (list, optional): names of fields in vtu file. Defaults to
+                                      ["Velocity"].
+        offset (int, optional): starting timestep. Defaults to 0.
+    """
 
     nFields = len(field_names)
 

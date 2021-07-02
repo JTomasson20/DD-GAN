@@ -21,7 +21,7 @@ def get_snapshots_3D(
     offset=0,
     ndatapoints=20,
     in_file_base="slug_255_exp_projected_",
-    out_file="dataset.npy",
+    out_file="sf_snapshots.npy",
 ):
     """
     Get snapshots from slug flow 3D dataset. Note that this function also
@@ -62,8 +62,6 @@ def get_snapshots_3D(
 
         x_all = np.transpose(coordinates[:, 0:3])
 
-        print(random)
-
         if not random:
             ndatapoints = 10
 
@@ -103,15 +101,17 @@ def get_snapshots_3D(
                 n = vtu_data.GetCellPoints(iEl) + 1
                 x_ndgln[iEl * nloc: (iEl + 1) * nloc] = n
 
-            # TODO: FIX THIS
+            # We set these values hard, TODO: change to input variables
             # set grid size
             nx = 60  # 512#128
             ny = 20  # 512#128
             nz = 20  # 128#32
-            dx = (xlength / (nGrids * (nx - 1))
-            dy = (yN - y0) / ny
-            dz = (zN - z0) / nz
-            ddx = np.array([dx, dy, dz])
+
+            ylength = 0.078
+            zlength = 0.078
+            xlength = 1  # length of a subdomain
+            ddx = np.array([float(xlength) / (nx - 1), ylength / (ny - 1),
+                           zlength / (nz - 1)])
 
             # print('nx, ny, nz', nx, ny, nz)
             # print('dx, dy, dz', ddx)
@@ -209,7 +209,7 @@ mesh and calculate subgrid snapshots from output for 3D slug flow dataset.")
                         default="slug_255_exp_projected_",
                         help='base filename for vtu files')
     parser.add_argument('--out_file', type=str, nargs='?',
-                        default="dataset.npy",
+                        default="sf_snapshots.npy",
                         help='output datafile')
     args = parser.parse_args()
 
