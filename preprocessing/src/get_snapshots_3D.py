@@ -16,7 +16,9 @@ __status__ = "Development"
 
 
 def get_snapshots_3D(
+    random=True,
     nfiles=2,
+    offset=0,
     ndatapoints=20,
     in_file_base="slug_255_exp_projected_",
     out_file="dataset.npy",
@@ -27,6 +29,8 @@ def get_snapshots_3D(
     per vtu file. Stores results in out_file numpy file.
 
     Args:
+        random (bool): If true, select random samples, otherwise split grid
+                       10-fold
         nfiles (int): Number of vtu files (starting from 0)
         ndatapoints (int): Number of random subdomains to sample per vtu file
         out_file (string): Output numpy filename
@@ -42,6 +46,7 @@ def get_snapshots_3D(
 
     # info from vtu file - has DG velocities
     for k in range(nfiles):
+        print("k: ", k)
         filename = in_file_base + str(k) + ".vtu"
         vtu_data = vtktools.vtu(filename)
         velocity = vtu_data.GetField("phase1::Velocity")
@@ -57,8 +62,12 @@ def get_snapshots_3D(
 
         x_all = np.transpose(coordinates[:, 0:3])
 
-        for i in range(ndatapoints):
-            print(i)
+        print(random)
+
+        if not random:
+            ndatapoints = 10
+
+        for i in range(offset, ndatapoints):
             velocity_mesh = np.zeros(
                 (nscalar_velocity, nNodes, nTime)
             )  # value_mesh(nscalar,nonods,ntime)
@@ -76,8 +85,12 @@ def get_snapshots_3D(
             zN = max(coordinates[:, 2])
 
             # Let's pick a random block along x axis of 1m length
-            x0 = float(np.random.randint(0, 9000)) / 1000
-            xN = x0 + 1
+            if random:
+                x0 = float(np.random.randint(0, 9000)) / 1000
+                xN = x0 + 1
+            else:
+                x0 = float(i)
+                xN = x0 + 1
 
             # print('(x0,y0,z0)',x0, y0, z0)
             # print('(xN,yN,zN)',xN, yN, zN)
@@ -90,11 +103,12 @@ def get_snapshots_3D(
                 n = vtu_data.GetCellPoints(iEl) + 1
                 x_ndgln[iEl * nloc: (iEl + 1) * nloc] = n
 
+            # TODO: FIX THIS
             # set grid size
-            nx = 20  # 512#128
+            nx = 60  # 512#128
             ny = 20  # 512#128
-            nz = 60  # 128#32
-            dx = (xN - x0) / nx
+            nz = 20  # 128#32
+            dx = (xlength / (nGrids * (nx - 1))
             dy = (yN - y0) / ny
             dz = (zN - z0) / nz
             ddx = np.array([dx, dy, dz])
@@ -177,9 +191,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Module that wraps some \
 legacy code to interpolate data from  an unstructured mesh to a structured \
 mesh and calculate subgrid snapshots from output for 3D slug flow dataset.")
+    parser.add_argument('--random', type=int, nargs='?',
+                        default=1,
+                        help='If 1, select random samples, otherwise split\
+ grid 10-fold')
     parser.add_argument('--nfiles', type=int, nargs='?',
                         default=2,
-                        help='Number of vtu files, starting from 0')
+                        help='Number of vtu files')
+    parser.add_argument('--offset', type=int, nargs='?',
+                        default=0,
+                        help='vtu file to start from')
     parser.add_argument('--ndatapoints', type=int, nargs='?',
                         default=2,
                         help='number of random subdomains to sample from each vtu\
