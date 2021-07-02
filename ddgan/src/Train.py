@@ -336,3 +336,35 @@ class GAN:
         print('ending training')
 
         return None
+
+    def resume_training(self, training_data, start_epoch):
+
+        for epoch in range(start_epoch, self.epochs):
+            print('epoch: \t', epoch)
+
+            noise = self.random_generator(
+                [training_data.shape[0], self.ndims]
+                )
+
+            # shuffle each epoch
+            real_data, noise = sklearn.utils.shuffle(training_data, noise)
+
+            shaped_real_data = real_data.reshape(
+                                    self.batches,
+                                    self.batch_size,
+                                    self.ndims*self.nsteps)
+
+            shaped_noise = noise.reshape(
+                                    self.batches,
+                                    self.batch_size,
+                                    self.ndims)
+
+            for i in range(shaped_real_data.shape[0]):
+                train_step(self, shaped_noise[i], shaped_real_data[i])
+
+            self.print_loss()
+            self.write_summary(epoch)
+            self.resetting_states()
+
+            if (epoch + 1) % 1000 == 0:
+                self.save_gan(epoch)
