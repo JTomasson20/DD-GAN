@@ -21,7 +21,7 @@ class Optimize:
 
     gan: GAN = None
     eigenvals: np.ndarray = None
-    bounds: float = 4.0  # set to inf if not in use
+    bounds: float = 1e5  # set to inf if not in use
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
