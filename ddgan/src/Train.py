@@ -56,7 +56,7 @@ class GAN:
                                                      stddev=0.05,
                                                      seed=seed)
 
-    random_generator = truncated_normal(mean=0, sd=1, low=-5, upp=5)
+    random_generator = truncated_normal(mean=0, sd=1, low=-6, upp=6)
 
     def setup(self, find_old_model=False) -> None:
         """
@@ -77,7 +77,7 @@ class GAN:
             beta_2=0.9
             )
 
-        self.make_logs()
+        # self.make_logs()
         self.make_GAN(find_old_model=find_old_model)
 
     def make_logs(self) -> None:
@@ -267,7 +267,7 @@ class GAN:
             print('epoch: \t', epoch)
 
             noise = self.random_generator(
-                [training_data.shape[0], self.ndims]
+                [training_data.shape[0], self.nsteps]
                 )
 
             # shuffle each epoch
@@ -281,7 +281,7 @@ class GAN:
             shaped_noise = noise.reshape(
                                     self.batches,
                                     self.batch_size,
-                                    self.ndims)
+                                    self.nsteps)
 
             for i in range(shaped_real_data.shape[0]):
                 train_step(self, shaped_noise[i], shaped_real_data[i])
@@ -320,21 +320,7 @@ class GAN:
         self.train(training_data)
         print('ending training')
 
-        # generate some random inputs and put through generator
-        test_input = self.random_generator(
-            [training_data.shape[0], self.ndims]
-            )
-
-        predictions = self.generator(test_input, training=False)
-
-        predictions_np = predictions.numpy()  # nExamples by nPOD*nsteps
-
-        # Reshaping the GAN output (in order to apply inverse scaling)
-        predictions_np = predictions_np.reshape(
-            self.batches*self.nsteps,
-            self.ndims)
-
-        return predictions_np
+        return None
 
     def resume_training(self, training_data, start_epoch):
 

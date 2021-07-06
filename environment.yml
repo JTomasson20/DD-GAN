@@ -13,5 +13,5 @@ dependencies:
   - pandas
   - scipy
   - pip:
-    - tensorflow-gpu==1.10.0
+    - tensorflow-gpu
     - scikit-learn

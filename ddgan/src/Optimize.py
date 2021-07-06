@@ -15,13 +15,14 @@ class Optimize:
     """
     start_from: int = 100
     nPOD: int = 10
-    nLatent: int = nPOD
+    nLatent: int = 10  # Dimensionality of latent space
     npredictions: int = 20  # Number of future steps
     optimizer_epochs: int = 5000
+    attempts = 1
 
     gan: GAN = None
     eigenvals: np.ndarray = None
-    bounds: float = 4.0  # set to inf if not in use
+    bounds: float = 1e5  # set to inf if not in use
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
@@ -78,8 +79,7 @@ class Optimize:
 
     def timestep_loop(self,
                       real_output: np.ndarray,
-                      prev_latent: np.ndarray,
-                      attempts: int):
+                      prev_latent: np.ndarray):
         """
         Optimizes inputs either from a previous timestep or from
         new randomly initialized inputs
@@ -87,8 +87,6 @@ class Optimize:
         Args:
             real_output (np.ndarray): Actual values
             prev_latent (np.ndarray): Latent values from previous iteration
-            attempts (int): Number of optimization iterations
-
         Returns:
             np.ndarray: Updated values
             list: Loss values
@@ -101,7 +99,7 @@ class Optimize:
         norm_latent_list = []
         init_latent = prev_latent.numpy()
 
-        for j in range(attempts):
+        for j in range(self.attempts):
             ip = prev_latent
 
             for epoch in range(self.optimizer_epochs):
@@ -140,13 +138,13 @@ class Optimize:
         converged = np.zeros((self.npredictions, self.nLatent))
         latent = np.zeros((self.npredictions, self.nLatent))
 
-        current = tf.Variable(tf.zeros([1, self.gan.ndims]))
+        current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
 
         for i in range(self.npredictions):
             print('Time step: \t', i)
 
             updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
-                self.timestep_loop(the_input, current, 1)
+                self.timestep_loop(the_input, current)
             current = updated
 
             losses_from_opt.append(loss_opt)
@@ -185,12 +183,12 @@ class Optimize:
 
         inn = training_data[self.start_from,
                             :(self.gan.nsteps-1)*self.nPOD
-                            ].reshape(1, (self.gan.nsteps - 1) * self.nLatent)
+                            ].reshape(1, (self.gan.nsteps - 1) * self.nPOD)
 
         initial_comp = training_data[self.start_from,
                                      :(self.gan.nsteps-1)*self.nPOD
                                      ].reshape(self.gan.nsteps - 1,
-                                               self.nLatent
+                                               self.nPOD
                                                )
 
         flds = self.timesteps(initial_comp, inn)
