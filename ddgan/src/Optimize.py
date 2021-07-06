@@ -140,7 +140,7 @@ class Optimize:
         converged = np.zeros((self.npredictions, self.nLatent))
         latent = np.zeros((self.npredictions, self.nLatent))
 
-        current = tf.Variable(tf.zeros([1, self.gan.ndims]))
+        current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
 
         for i in range(self.npredictions):
             print('Time step: \t', i)
@@ -185,12 +185,12 @@ class Optimize:
 
         inn = training_data[self.start_from,
                             :(self.gan.nsteps-1)*self.nPOD
-                            ].reshape(1, (self.gan.nsteps - 1) * self.nLatent)
+                            ].reshape(1, (self.gan.nsteps - 1) * self.nPOD)
 
         initial_comp = training_data[self.start_from,
                                      :(self.gan.nsteps-1)*self.nPOD
                                      ].reshape(self.gan.nsteps - 1,
-                                               self.nLatent
+                                               self.nPOD
                                                )
 
         flds = self.timesteps(initial_comp, inn)

@@ -77,7 +77,7 @@ class GAN:
             beta_2=0.9
             )
 
-        self.make_logs()
+        # self.make_logs()
         self.make_GAN(find_old_model=find_old_model)
 
     def make_logs(self) -> None:
