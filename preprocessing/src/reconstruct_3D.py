@@ -1,3 +1,13 @@
+"""
+Module wraps some legacy code to construct a series of vtu files with 3D
+CFD data on unstructured mesh from structured mesh in numpy format.
+
+Code is not very general and likely only works for exact slug flow data
+used in this project. Note this code is meant to be a wrapper for legacy code
+that is intended to not be used used very often or in a critical/production
+setting. Therefore sustainability may be lacking.
+"""
+
 import u2r
 import numpy as np
 import sys, os
@@ -5,6 +15,14 @@ from utils import get_grid_end_points
 
 sys.path.append("/usr/lib/python2.7/dist-packages/")
 import vtktools
+
+__author__ = "Claire Heaney, Zef Wolffs"
+__credits__ = ["Jon Atli Tomasson"]
+__license__ = "MIT"
+__version__ = "1.0.0"
+__maintainer__ = "Zef Wolffs"
+__email__ = "zefwolffs@gmail.com"
+__status__ = "Development"
 
 
 def create_vtu_file_v_and_a(

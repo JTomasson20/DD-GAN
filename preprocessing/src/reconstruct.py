@@ -1,3 +1,13 @@
+"""
+Module wraps some legacy code to construct a series of vtu files with 2D
+CFD data on unstructured mesh from structured mesh in numpy format.
+
+Code is not very general and likely only works for exact flow past cylinder
+dataset used in this project. Note this code is meant to be a wrapper for
+legacy code that is intended to not be used used very often or in a
+critical/production setting. Therefore sustainability may be lacking.
+"""
+
 import u2r
 import vtktools
 import numpy as np

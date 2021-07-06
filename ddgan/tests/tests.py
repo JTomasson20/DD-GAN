@@ -7,7 +7,6 @@ import sklearn.preprocessing
 Please execute module from root of repository
 """
 
-
 @fixture(scope='module')
 def ddgan():
     """

@@ -1,3 +1,13 @@
+"""
+Module that wraps some legacy code to get a set of pod coefficients for
+subdomains (domain-decomposed) from a domain decomposed flow past cylinder
+problem.
+
+Note this code is meant to be a wrapper for legacy code that is intended to
+not be used used very often or in a critical/production setting. Therefore
+sustainability  may be lacking.
+"""
+
 import u2r
 import vtktools
 import numpy as np
