@@ -15,7 +15,7 @@ class Optimize:
     """
     start_from: int = 100
     nPOD: int = 10
-    nLatent: int = nPOD
+    nLatent: int = 10  # Dimensionality of latent space
     npredictions: int = 20  # Number of future steps
     optimizer_epochs: int = 5000
 

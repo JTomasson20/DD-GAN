@@ -281,7 +281,7 @@ class GAN:
             shaped_noise = noise.reshape(
                                     self.batches,
                                     self.batch_size,
-                                    self.ndims)
+                                    self.nsteps)
 
             for i in range(shaped_real_data.shape[0]):
                 train_step(self, shaped_noise[i], shaped_real_data[i])
