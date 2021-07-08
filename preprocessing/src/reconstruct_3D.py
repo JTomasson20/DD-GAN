@@ -10,6 +10,7 @@ setting. Therefore sustainability may be lacking.
 
 import u2r
 import numpy as np
+import argparse
 import sys, os
 from utils import get_grid_end_points
 
@@ -120,7 +121,7 @@ def get_clean_vtk_file(filename):
 
 
 def reconstruct_3D(
-    file_base="slug_255_exp_projected_",
+    out_file_base="slug_255_exp_projected_",
     nGrids=10,
     offset=0,
     nTime=2,
@@ -130,7 +131,7 @@ def reconstruct_3D(
     Go from numpy array grid to vtu file mesh
 
     Args:
-        file_base (str, optional): Example file base, will also be used for
+        out_file_base (str, optional): Example file base, will also be used for
                                    original velocity and alpha. Defaults to
                                    "slug_255_exp_projected_".
         nGrids (int, optional): Number of grids. Defaults to 10.
@@ -142,7 +143,7 @@ def reconstruct_3D(
                                      Defaults to "dataset.npy".
     """
 
-    filename = file_base + "0" + ".vtu"
+    filename = out_file_base + "0" + ".vtu"
     vtu_file = vtktools.vtu(filename)
     coordinates = vtu_file.GetLocations()
 
@@ -316,7 +317,7 @@ def reconstruct_3D(
     #    original_data.append(np.zeros((nNodes, nDim*nTime)))
     original_velocity = np.zeros((nNodes, nDim * nTime))
     for iTime in range(nTime):
-        filename = file_base + str(offset + iTime) + ".vtu"
+        filename = out_file_base + str(offset + iTime) + ".vtu"
         vtu_data = vtktools.vtu(filename)
 
         my_field = vtu_data.GetField("phase1::Velocity")[:, 0:nDim]
@@ -370,7 +371,7 @@ def reconstruct_3D(
     #    original_data.append(np.zeros((nNodes, nDim*nTime)))
     original_alpha = np.zeros((nNodes, nDim * nTime))
     for iTime in range(nTime):
-        filename = file_base + str(offset + iTime) + ".vtu"
+        filename = out_file_base + str(offset + iTime) + ".vtu"
         vtu_data = vtktools.vtu(filename)
 
         my_field = vtu_data.GetField(
@@ -383,7 +384,7 @@ def reconstruct_3D(
     if not os.path.isdir(path_to_reconstructed_results):
         os.mkdir(path_to_reconstructed_results)
 
-    template_vtu = file_base + "0.vtu"
+    template_vtu = out_file_base + "0.vtu"
     for iTime in range(nTime):
         create_vtu_file_v_and_a(
             path_to_reconstructed_results,
@@ -402,4 +403,26 @@ def reconstruct_3D(
 
 
 if __name__ == "__main__":
-    reconstruct_3D()
+    parser = argparse.ArgumentParser(description="Module that wraps some \
+legacy code to interpolate data from  a structured mesh to an unstructured \
+mesh and calculate vtu files from output for 3D slug flow dataset.")
+    parser.add_argument('--out_file_base', type=str, nargs='?',
+                        default="slug_255_exp_projected_",
+                        help=' Example file base, will also be used for\
+ original velocity and alpha')
+    parser.add_argument('--offset', type=int, nargs='?',
+                        default=0,
+                        help='vtu file to start from')
+    parser.add_argument('--nTime', type=int, nargs='?',
+                        default=2,
+                        help='number of timesteps')
+    parser.add_argument('--input_array', type=str, nargs='?',
+                        default="cae_reconstruction_sf.npy",
+                        help='Input array to convert to vtu,\
+ expects shape to be (ngrids*ntime, nx,\
+ ny, nz, nscalar_vel+nscalar_alpha)')
+    args = parser.parse_args()
+
+    arg_dict = vars(args)
+
+    reconstruct_3D(**arg_dict)
