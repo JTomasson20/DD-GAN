@@ -260,6 +260,7 @@ def reconstruct_3D(
             grids.shape[4],
         )
     )
+
     for i in range(nTime):
         grids_split_domains[:, i, :, :, :, :] = grids[
             (i) * (nGrids): (i + 1) * nGrids, :, :, :
@@ -332,6 +333,8 @@ def reconstruct_3D(
 
         block_x_start = get_grid_end_points(grid_origin, grid_width, iGrid)
 
+        print(block_x_start)
+
         for iTime in range(nTime):
 
             zeros_beyond_grid = 1  # 0 extrapolate solution; 1 gives zeros
@@ -353,9 +356,9 @@ def reconstruct_3D(
             )
 
             reconstruction_on_mesh[
-                nScalar * iTime : nScalar * (iTime + 1), :
+                nScalar_alpha * iTime : nScalar_alpha * (iTime + 1), :
             ] = reconstruction_on_mesh[
-                nScalar * iTime : nScalar * (iTime + 1), :
+                nScalar_alpha * iTime : nScalar_alpha * (iTime + 1), :
             ] + np.squeeze(
                 reconstruction_on_mesh_from_one_grid
             )
