@@ -50,7 +50,7 @@ def get_snapshots_3D(
     # only checking one time level and x component of velocity here
     nscalar_velocity = 3
     nscalar_alpha = 1
-    ndim = 3  # 2D problem (nothing to do with the dimension of the field!)
+    ndim = 3
     nTime = 1
     nloc = 4
 
@@ -79,7 +79,7 @@ def get_snapshots_3D(
             velocity_mesh = np.zeros(
                 (nscalar_velocity, nNodes, nTime)
             )  # value_mesh(nscalar,nonods,ntime)
-            velocity_mesh[0, :, 0] = velocity[:, 0]  # streamwise velocity
+            velocity_mesh[:, :, 0] = np.swapaxes(velocity[:, :], 0, 1)
 
             alpha_mesh = np.zeros(
                 (nscalar_alpha, nNodes, nTime)
