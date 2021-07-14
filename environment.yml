@@ -3,15 +3,15 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python>=3.6
+  - python==3.7
   - pip
   - flake8
   - pytest
   - ipython
   - numpy
-  - keras==2.2.4
+  - keras
   - pandas
   - scipy
   - pip:
-    - tensorflow-gpu
+    - tensorflow
     - scikit-learn
