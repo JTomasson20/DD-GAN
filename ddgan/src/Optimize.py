@@ -47,7 +47,7 @@ class Optimize:
         # else:
         return self.mse(input, output)
 
-    # @tf.function
+    @tf.function
     def opt_latent_var(self, latent_var: tf.Variable, output: np.ndarray):
         """
         Main input optimization loop optimizing the latent variable
@@ -144,6 +144,7 @@ class Optimize:
         latent = np.zeros((self.npredictions, self.nLatent))
 
         current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
+        #prediction = np.zeros((1, self.nLatent * self.nPOD))
 
         for i in range(self.npredictions):
             print('Time step: \t', i)
@@ -155,18 +156,19 @@ class Optimize:
             losses_from_opt.append(loss_opt)
             norm_latent_list.append(norm_latent)
 
+            #prediction[0] = self.gan.generator(updated, training=False)
             prediction = self.gan.generator(updated, training=False)
 
             # Not so sure about the this line but it makes sense to me
             # that only one step at a time is changed so start by overwriting
             # the first steps with the previous values
-            prediction[:, :, :self.nOptimized] = the_input
+            # prediction[:, :self.nOptimized] = the_input
 
             # Last 4 images become next first 4 images
             next_input = prediction[:, self.gan.ndims:]
 
             # Last image out of 5 is added to list of compressed vars
-            new_result = prediction[:, self.gan.ndims*(self.gan.nsteps - 1):]
+            new_result = prediction[:, self.nOptimized:]
             flds = tf.concat([flds, new_result], 0)
             the_input = next_input.numpy()
 
