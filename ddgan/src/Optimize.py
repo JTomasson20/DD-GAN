@@ -22,7 +22,6 @@ class Optimize:
 
     gan: GAN = None
     eigenvals: np.ndarray = None
-    bounds: float = 1e5  # set to inf if not in use
 
     # Only for DD
     evaluated_subdomains: int = 2
@@ -30,14 +29,16 @@ class Optimize:
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
+
+    # Number of optimized points, would normally keep
+    # this as a private variable
     nOptimized: int = 90
 
+    # Set to false for previous version of updating
+    # predictions
     mod: bool = True
 
     def mse_loss(self, input, output):
-        # if tf.math.greater(tf.math.reduce_max(tf.math.abs(output)),
-        #  tf.constant(self.bounds)):
-        #     return 1.e5
 
         # if self.eigenvals is not None:
         #     print(input.shape)
@@ -306,18 +307,10 @@ class Optimize:
         the_input = tf.convert_to_tensor(inn)
 
         # Structured predictions. Data added as we go
-        flds = tf.convert_to_tensor(initial)
+        flds = tf.convert_to_tensor(np.array(initial)[:, 1-self.gan.nsteps:])
 
         # Indexes for the next iteration
-        indexing = np.concatenate([
-            np.arange(
-                self.nPOD, self.nPOD*self.gan.nsteps*2 + self.nPOD
-                ),
-            np.arange(
-                self.nPOD * self.gan.nsteps * 2 + self.nPOD,  # -1,
-                self.nPOD * self.gan.nsteps * 3
-                )]
-        )
+        indexing = np.arange(self.nPOD, self.nPOD * self.gan.nsteps * 3)
 
         # Latent space
         current_latent = tf.Variable(tf.zeros([
@@ -331,9 +324,9 @@ class Optimize:
             self.nLatent
             ]))
 
-        # updated = np.zeros((self.evaluated_subdomains, 1, self.nLatent))
         updated = current_latent
 
+        # Predicted POD coefficients
         prediction = np.zeros(
             (self.evaluated_subdomains,
              1,
@@ -379,17 +372,9 @@ class Optimize:
 
             # Do a predict/update cycle
             for _ in range(self.cycles):
+                print("Cycle: \t " + str(_))
                 for j in domains:
-                    # current_latent_single = \
-                    #     tf.tensor_scatter_nd_update(
-                    #         current_latent_single,
-                    #         np.array(
-                    #             [np.zeros(self.nLatent),
-                    #              np.arange(self.nLatent)],
-                    #             dtype=np.int32).T,
-                    #         current_latent[j, 0]
-                    #     )
-
+                    print("Domain: \t " + str(j))
                     current_latent_single.assign(current_latent[j])
                     tmp[0] = self.timestep_loopDD(
                         the_input[j],
@@ -461,6 +446,7 @@ class Optimize:
             # Last 4 images become next first 4 images
             prediction[:, :, :self.nOptimized] = the_input
             next_input = prediction[:, :, indexing]
+
             # Last image out of 5 is added to list of compressed vars
             new_result = prediction[:, :, self.nOptimized:]
             flds = tf.concat([flds, new_result], 1)
@@ -490,6 +476,6 @@ class Optimize:
 
             initial_comp.append(training_data[
                 i, self.start_from, :self.nOptimized
-                ].reshape(self.gan.nsteps*3 - 1, self.nPOD))
+                ].reshape(-1, self.nPOD))
 
         return self.timestepsDD(initial_comp, inn, boundrary_conditions)
