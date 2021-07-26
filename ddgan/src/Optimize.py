@@ -26,6 +26,8 @@ class Optimize:
     # Only for DD
     evaluated_subdomains: int = 2
     cycles: int = 3
+    cumulative_steps = None
+    dim_steps = None
 
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
@@ -33,10 +35,6 @@ class Optimize:
     # Number of optimized points, would normally keep
     # this as a private variable
     nOptimized: int = 90
-
-    # Set to false for previous version of updating
-    # predictions
-    mod: bool = True
 
     def mse_loss(self, input, output):
 
@@ -172,56 +170,6 @@ class Optimize:
         latent = np.zeros((self.npredictions, self.nLatent))
 
         current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
-        # prediction = np.zeros((1, self.nLatent * self.nPOD))
-
-        for i in range(self.npredictions):
-            print('Time step: \t', i)
-
-            updated, loss_opt, converged[i, :], latent[i, :], norm_latent = \
-                self.timestep_loop(the_input, current)
-            current = updated
-
-            losses_from_opt.append(loss_opt)
-            norm_latent_list.append(norm_latent)
-
-            prediction = self.gan.generator(updated, training=False)
-
-            # Last 4 images become next first 4 images
-            next_input = prediction[:, self.gan.ndims:]
-
-            # Last image out of 5 is added to list of compressed vars
-            new_result = prediction[:, self.nOptimized:]
-            flds = tf.concat([flds, new_result], 0)
-            the_input = next_input.numpy()
-
-        np.savetxt('optimised_losses.csv', losses_from_opt, delimiter=',')
-        np.savetxt('converged_z_values.csv', converged, delimiter=',')
-        np.savetxt('initial_z_values.csv', latent, delimiter=',')
-        np.savetxt('norm_latent_vars.csv', norm_latent_list, delimiter=',')
-
-        return flds
-
-    def timesteps_mod(self, initial, inn):
-        """
-        Outermost loop. Collecting the predicted points and
-        iterating through predictions
-
-        Args:
-            initial (np.ndarray): Initial value array
-            inn (np.ndarray): Gan input array
-
-        Returns:
-            np.ndarray: Predicted points
-        """
-        the_input = tf.convert_to_tensor(inn)
-        flds = tf.convert_to_tensor(initial)
-
-        losses_from_opt = []
-        norm_latent_list = []
-        converged = np.zeros((self.npredictions, self.nLatent))
-        latent = np.zeros((self.npredictions, self.nLatent))
-
-        current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
         prediction = np.zeros((1, self.nLatent * self.nPOD))
 
         for i in range(self.npredictions):
@@ -236,8 +184,7 @@ class Optimize:
 
             prediction[0] = self.gan.generator(updated, training=False)
 
-            # Not so sure about the this line but it makes sense to me
-            # that only one step at a time is changed so start by overwriting
+            # Only one step at a time is changed so start by overwriting
             # the first steps with the previous values
             prediction[:, :self.nOptimized] = the_input
 
@@ -281,10 +228,7 @@ class Optimize:
             :(self.gan.nsteps-1)*self.nPOD
             ].reshape(self.gan.nsteps - 1, self.nPOD)
 
-        if self.mod:
-            flds = self.timesteps_mod(initial_comp, inn)
-        else:
-            flds = self.timesteps(initial_comp, inn)
+        flds = self.timesteps(initial_comp, inn)
 
         if scaling is not None:
             flds = scaling.inverse_transform(flds).T
@@ -307,10 +251,12 @@ class Optimize:
         the_input = tf.convert_to_tensor(inn)
 
         # Structured predictions. Data added as we go
-        flds = tf.convert_to_tensor(np.array(initial)[:, 1-self.gan.nsteps:])
+        flds = tf.convert_to_tensor(
+            np.array(initial)[:, 1-self.dim_steps[-1]:]
+            )
 
         # Indexes for the next iteration
-        indexing = np.arange(self.nPOD, self.nPOD * self.gan.nsteps * 3)
+        indexing = np.arange(self.nPOD, self.nPOD + self.nOptimized)
 
         # Latent space
         current_latent = tf.Variable(tf.zeros([
@@ -330,7 +276,7 @@ class Optimize:
         prediction = np.zeros(
             (self.evaluated_subdomains,
              1,
-             self.nLatent * self.nPOD * 3))
+             self.nPOD + self.nOptimized))
 
         # Moving back and forward to be iterated through
         # 2 domains become (0,1)
@@ -352,8 +298,8 @@ class Optimize:
                 np.array(
                     [np.zeros(self.nPOD),
                      np.zeros(self.nPOD),
-                     np.arange(self.nPOD*(self.gan.nsteps - 1),
-                               self.nPOD*self.gan.nsteps)],
+                     np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
+                               self.nPOD*self.cumulative_steps[0])],
                     dtype=np.int32).T,
                 boundrary_condition[
                     0, i + self.start_from])
@@ -364,8 +310,8 @@ class Optimize:
                 np.array(
                     [np.ones(self.nPOD) * (len(the_input)-1),
                      np.zeros(self.nPOD),
-                     np.arange(self.nPOD*(2*self.gan.nsteps - 1),
-                               self.nPOD*2*self.gan.nsteps)],
+                     np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
+                               self.nPOD*self.cumulative_steps[1])],
                     dtype=np.int32).T,
                 boundrary_condition[
                     1, i + self.start_from])
@@ -403,45 +349,50 @@ class Optimize:
                             np.array(
                                 [np.ones(self.nPOD) * (j-1),
                                  np.zeros(self.nPOD),
-                                 np.arange(self.nPOD*(2*self.gan.nsteps - 1),
-                                           self.nPOD*2*self.gan.nsteps)],
+                                 np.arange(self.nPOD*(
+                                     self.cumulative_steps[1]-1
+                                     ),
+                                 self.nPOD*self.cumulative_steps[1])],
                                 dtype=np.int32).T,
                             prediction[j, 0, -self.nPOD:])
 
                     # everybody except rightmost updates to the right
-                    if j+1 != self.evaluated_subdomains:
+                    if j != np.max(domains):
                         the_input = tf.tensor_scatter_nd_update(
                             the_input,
                             np.array(
                                 [np.ones(self.nPOD) * (j+1),
                                  np.zeros(self.nPOD),
-                                 np.arange(self.nPOD*(self.gan.nsteps - 1),
-                                           self.nPOD*self.gan.nsteps)],
+                                 np.arange(self.nPOD*(
+                                     self.cumulative_steps[0] - 1
+                                     ),
+                                 self.nPOD*self.cumulative_steps[0])],
                                 dtype=np.int32).T,
                             prediction[j, 0, -self.nPOD:])
 
                     current_latent = updated
 
-                # Redo the first one to complete the final cycle
-                current_latent_single.assign(current_latent[0])
-                tmp[0] = self.timestep_loopDD(
-                        the_input[j],
-                        current_latent_single)
+            # Redo the first one to complete the final cycle
+            print("Domain: \t 0")
+            current_latent_single.assign(current_latent[0])
+            tmp[0] = self.timestep_loopDD(
+                    the_input[j],
+                    current_latent_single)
 
-                # updated[j] = tmp
-                updated = tf.tensor_scatter_nd_update(
-                    updated,
-                    np.array([
-                        np.zeros(self.nLatent),
-                        np.zeros(self.nLatent),
-                        np.arange(self.nLatent)],
-                        dtype=np.int32).T,
-                    tmp[0][0])
+            # updated[j] = tmp
+            updated = tf.tensor_scatter_nd_update(
+                updated,
+                np.array([
+                    np.zeros(self.nLatent),
+                    np.zeros(self.nLatent),
+                    np.arange(self.nLatent)],
+                    dtype=np.int32).T,
+                tmp[0][0])
 
-                prediction[0, 0] = self.gan.generator(
-                    updated[0], training=False)
+            prediction[0, 0] = self.gan.generator(
+                updated[0], training=False)
 
-                current_latent = updated
+            current_latent = updated
 
             # Last 4 images become next first 4 images
             prediction[:, :, :self.nOptimized] = the_input
@@ -454,7 +405,7 @@ class Optimize:
 
         return flds
 
-    def predictDD(self, training_data, boundrary_conditions):
+    def predictDD(self, training_data, boundrary_conditions, dim_steps=None):
         """
         Communicator with optimizaiton scripts.
         Breaks up training data and feeds it forward.
@@ -464,8 +415,14 @@ class Optimize:
         """
         # Updating these values only if DD is used
         self.evaluated_subdomains = len(training_data)
-        self.nOptimized = (self.gan.nsteps*3 - 1) * self.nPOD
+        if dim_steps is None:
+            self.dim_steps = np.ones(3)*self.gan.nsteps
+            self.nOptimized = (self.gan.nsteps*3 - 1) * self.nPOD
+        else:
+            self.dim_steps = dim_steps
+            self.nOptimized = (np.sum(dim_steps)-1) * self.nPOD
 
+        self.cumulative_steps = np.cumsum(self.dim_steps)
         inn = []  # Flattened version of data
         initial_comp = []  # Structured version of data
 

@@ -19,21 +19,22 @@ class GAN:
     Class for the predictive GAN
     """
     # Keyword argument definitions
+    # Input data parameters
     nsteps: int = 5  # Consecutive timesteps
     ndims: int = 5  # Reduced dimensions
-    n_critic: int = 5  # Number of gradient penalty computations per epoch
-    lmbda: int = 10  # Gradient penalty multiplier
     batch_size: int = 20  # 32
     batches: int = 10  # 900
     seed: int = 143  # Random seed for reproducability
     epochs: int = 500  # Number of training epochs
-    logs_location: str = './logs/gradient_tape/'
-    model_location: str = 'models/'
+    nLatent: int = 10  # Dimensionality of the latent space
+
+    # WGAN training parameters
+    n_critic: int = 5  # Number of gradient penalty computations per epoch
+    lmbda: int = 10  # Gradient penalty multiplier
+
     gen_learning_rate: float = 0.0001  # Generator optimization learning rate
     disc_learning_rate: float = 0.0001  # Discriminator optimization learning
-
-    latent_space: int = 10  # Dimensionality of the latent space
-    unpair_noise: bool = True  # Make input noise each iteration if true
+    noise: bool = False  # If input generator_input is added during training
 
     # Objects - Can be filled in at bootup and skip calling setup
     # Remember to make logs if doing so
@@ -47,6 +48,10 @@ class GAN:
     d_loss = None
     w_loss = None
 
+    # Logs
+    logs_location: str = './logs/gradient_tape/'
+    model_location: str = 'models/'
+
     # Other definitions
     g_summary_writer = None
     d_summary_writer = None
@@ -56,6 +61,7 @@ class GAN:
                                                      stddev=0.05,
                                                      seed=seed)
 
+    noise_generator = None
     random_generator = truncated_normal(mean=0, sd=1, low=-6, upp=6)
 
     def setup(self, find_old_model=False) -> None:
@@ -78,6 +84,11 @@ class GAN:
             )
 
         # self.make_logs()
+        if self.noise:
+            self.noise_generator = truncated_normal(mean=0, sd=0.02)
+        else:
+            self.noise_generator = np.zeros
+
         self.make_GAN(find_old_model=find_old_model)
 
     def make_logs(self) -> None:
@@ -104,13 +115,13 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(
-                                10, input_shape=(self.latent_space, ),
+                                self.nsteps, input_shape=(self.nLatent, ),
                                 activation='relu',
                                 kernel_initializer=self.initializer))  # 5
 
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
-                                10, activation='relu',
+                                np.max([self.nsteps, 10]), activation='relu',
                                 kernel_initializer=self.initializer))  # 10
 
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -266,25 +277,30 @@ class GAN:
         for epoch in range(self.epochs):
             print('epoch: \t', epoch)
 
-            noise = self.random_generator(
-                [training_data.shape[0], self.nsteps]
+            generator_input = self.random_generator(
+                [training_data.shape[0], self.nLatent]
                 )
 
             # shuffle each epoch
-            real_data, noise = sklearn.utils.shuffle(training_data, noise)
+            real_data, generator_input = sklearn.utils.shuffle(
+                training_data, generator_input
+                )
 
             shaped_real_data = real_data.reshape(
                                     self.batches,
                                     self.batch_size,
                                     self.ndims*self.nsteps)
 
-            shaped_noise = noise.reshape(
+            shaped_generator_input = generator_input.reshape(
                                     self.batches,
                                     self.batch_size,
-                                    self.nsteps)
+                                    self.nLatent)
 
             for i in range(shaped_real_data.shape[0]):
-                train_step(self, shaped_noise[i], shaped_real_data[i])
+                train_step(self,
+                           shaped_generator_input[i],
+                           shaped_real_data[i] +
+                           self.noise_generator(shaped_real_data.shape))
 
             self.print_loss()
 
@@ -327,25 +343,29 @@ class GAN:
         for epoch in range(start_epoch, self.epochs):
             print('epoch: \t', epoch)
 
-            noise = self.random_generator(
-                [training_data.shape[0], self.ndims]
+            generator_input = self.random_generator(
+                [training_data.shape[0], self.nLatent]
                 )
 
             # shuffle each epoch
-            real_data, noise = sklearn.utils.shuffle(training_data, noise)
+            real_data, generator_input = \
+                sklearn.utils.shuffle(training_data, generator_input)
 
             shaped_real_data = real_data.reshape(
                                     self.batches,
                                     self.batch_size,
                                     self.ndims*self.nsteps)
 
-            shaped_noise = noise.reshape(
+            shaped_generator_input = generator_input.reshape(
                                     self.batches,
                                     self.batch_size,
-                                    self.ndims)
+                                    self.nLatent)
 
             for i in range(shaped_real_data.shape[0]):
-                train_step(self, shaped_noise[i], shaped_real_data[i])
+                train_step(self,
+                           shaped_generator_input[i],
+                           shaped_real_data[i] +
+                           self.noise_generator(shaped_real_data.shape))
 
             self.print_loss()
             self.write_summary(epoch)
