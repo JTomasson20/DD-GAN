@@ -61,15 +61,20 @@ class GAN:
                                                      stddev=0.05,
                                                      seed=seed)
 
-    noise_generator = None
     random_generator = truncated_normal(mean=0, sd=1, low=-6, upp=6)
+
+    # Only in use if noise = True
+    noise_generator = None
+    # Standard deviation of a normal distribution with mu = 0
+    noise_level: float = 0.02
 
     def setup(self, find_old_model=False) -> None:
         """
         Setting up the neccecary values for the GAN class
 
         Args:
-            kwargs (dict): key-value pairs of input variables
+            find_old_model (bool): whether to look for a ready model
+                in stead of building one from scratch`
         """
         self.generator_opt = tf.keras.optimizers.Nadam(
             learning_rate=self.gen_learning_rate,
@@ -83,9 +88,10 @@ class GAN:
             beta_2=0.9
             )
 
-        # self.make_logs()
+        # Data augmentation noise
         if self.noise:
-            self.noise_generator = truncated_normal(mean=0, sd=0.02)
+            self.noise_generator = truncated_normal(mean=0,
+                                                    sd=self.noise_level)
         else:
             self.noise_generator = np.zeros
 
@@ -115,13 +121,13 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(
-                                self.nsteps, input_shape=(self.nLatent, ),
+                                10, input_shape=(self.nLatent, ),
                                 activation='relu',
                                 kernel_initializer=self.initializer))  # 5
 
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
-                                np.max([self.nsteps, 10]), activation='relu',
+                                10, activation='relu',
                                 kernel_initializer=self.initializer))  # 10
 
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -160,9 +166,12 @@ class GAN:
                                 1, kernel_initializer=self.initializer))
 
     def make_GAN(self, find_old_model=False) -> None:
-        """
-        Searching for an existing model, creating one from scratch
+        """Searching for an existing model, creating one from scratch
         if not found.
+
+        Args:
+            find_old_model (bool, optional): To search for
+                an existing model at self.model_location Defaults to False.
         """
         if find_old_model:
             try:
@@ -225,6 +234,8 @@ class GAN:
 
         Args:
             epoch (int): Epoch number
+            folder (string): model location. Defaults to
+                ´models´
         """
         saved_g_dir = './' + folder + 'saved_g_' + str(epoch + 1)
         saved_d_dir = './' + folder + 'saved_c_' + str(epoch + 1)
@@ -277,15 +288,18 @@ class GAN:
         for epoch in range(self.epochs):
             print('epoch: \t', epoch)
 
+            # Drawing samples from normal distribution for
+            # generator
             generator_input = self.random_generator(
                 [training_data.shape[0], self.nLatent]
                 )
 
-            # shuffle each epoch
+            # Shuffle each epoch. Command does so individually
             real_data, generator_input = sklearn.utils.shuffle(
                 training_data, generator_input
                 )
 
+            # Reshaping GAN inputs
             shaped_real_data = real_data.reshape(
                                     self.batches,
                                     self.batch_size,
@@ -295,15 +309,16 @@ class GAN:
                                     self.batches,
                                     self.batch_size,
                                     self.nLatent)
-
+            # Single epoch
             for i in range(shaped_real_data.shape[0]):
                 train_step(self,
                            shaped_generator_input[i],
                            shaped_real_data[i] +
-                           self.noise_generator(shaped_real_data.shape))
+                           self.noise_generator(
+                               shaped_real_data[i].shape
+                               ).astype(np.float32))
 
             self.print_loss()
-
             losses[epoch, :] = [epoch+1,
                                 self.g_loss.result().numpy(),
                                 self.d_loss.result().numpy(),
@@ -318,16 +333,18 @@ class GAN:
         # Saving the loss data in a csv file
         np.savetxt('losses.csv', losses, delimiter=',')
 
-    def learn_hypersurface_from_POD_coeffs(self,
-                                           training_data):
+    def learn_hypersurface_from_POD_coeffs(
+            self,
+            training_data: np.ndarray):
         """
-        Make and train a model
+        Umbrella function that makes logs and begins
+            training
 
         Args:
-            training_data ([type]): [description]
+            training_data (np.ndarray): [description]
 
         Returns:
-            [type]: [description]
+            (tensor): Fitted data and future predictions
         """
         # logs to follow losses on tensorboard
         self.make_logs()
@@ -339,7 +356,14 @@ class GAN:
         return None
 
     def resume_training(self, training_data, start_epoch):
+        """Umbrella function for resuming training from
+                starting epoch.
 
+        Args:
+            training_data (np.ndarray): Structured training
+                data in 1d array
+            start_epoch (int): epoch to resume from
+        """
         for epoch in range(start_epoch, self.epochs):
             print('epoch: \t', epoch)
 

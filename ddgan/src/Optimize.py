@@ -9,19 +9,20 @@ __all__ = ['Optimize']
 @dataclass(unsafe_hash=True)
 class Optimize:
     """
-    Finding and orienting within the latent space. Functions are
-    in the order innermost -> outermost. The function therefore most
-    often called appears first
+    Finding position and orienting within the latent space
+    to predict in time.
     """
+
+    # Input data hyperparameters
     start_from: int = 100
     nPOD: int = 10
     nLatent: int = 10  # Dimensionality of latent space
+    dt: int = 1
+
+    # Optimization hyperparameters
     npredictions: int = 20  # Number of future steps
     optimizer_epochs: int = 5000
     attempts = 1
-
-    gan: GAN = None
-    eigenvals: np.ndarray = None
 
     # Only for DD
     evaluated_subdomains: int = 2
@@ -29,14 +30,28 @@ class Optimize:
     cumulative_steps = None
     dim_steps = None
 
+    # Objects
     mse = tf.keras.losses.MeanSquaredError()
     optimizer = tf.keras.optimizers.Adam(5e-3)
+    gan: GAN = None
 
     # Number of optimized points, would normally keep
     # this as a private variable
     nOptimized: int = 90
 
+    # Debug mode
+    debug: bool = False
+
     def mse_loss(self, input, output):
+        """Mean square error loss function
+
+        Args:
+            input (tensor): Predicted values
+            output (tensor): Actual value
+
+        Returns:
+            int: mse loss value
+        """
 
         # if self.eigenvals is not None:
         #     print(input.shape)
@@ -126,7 +141,8 @@ class Optimize:
 
     def timestep_loopDD(self,
                         real_output: np.ndarray,
-                        prev_latent: np.ndarray):
+                        prev_latent: np.ndarray
+                        ) -> np.ndarray:
         """
         Optimizes inputs either from a previous timestep or from
         new randomly initialized inputs
@@ -134,9 +150,9 @@ class Optimize:
         Args:
             real_output (np.ndarray): Actual values
             prev_latent (np.ndarray): Latent values from previous iteration
+
         Returns:
             np.ndarray: Updated values
-
         """
 
         for j in range(self.attempts):
@@ -149,7 +165,10 @@ class Optimize:
 
         return ip
 
-    def timesteps(self, initial, inn):
+    def timesteps(self,
+                  initial: np.ndarray,
+                  inn: np.ndarray
+                  ) -> np.ndarray:
         """
         Outermost loop. Collecting the predicted points and
         iterating through predictions
@@ -203,7 +222,10 @@ class Optimize:
 
         return flds
 
-    def predict(self, training_data, scaling=None, **kwargs) -> np.ndarray:
+    def predict(self,
+                training_data: np.ndarray,
+                scaling=None
+                ) -> np.ndarray:
         """
         Communicator with the optimization scripts
 
@@ -235,7 +257,11 @@ class Optimize:
 
         return flds
 
-    def timestepsDD(self, initial, inn, boundrary_condition):
+    def timestepsDD(self,
+                    initial: np.ndarray,
+                    inn: np.ndarray,
+                    boundrary_condition: np.ndarray
+                    ) -> list:
         """
         Outermost loop. Collecting the predicted points and
         iterating through predictions
@@ -243,7 +269,8 @@ class Optimize:
         Args:
             initial (np.ndarray): Initial value array
             inn (np.ndarray): Gan input array
-
+            boundrary_condition (np.ndarray): values for
+                leftmost and rightmost domains
         Returns:
             np.ndarray: Predicted points
         """
@@ -290,85 +317,36 @@ class Optimize:
 
         for i in range(self.npredictions):
             print('Time step: \t', i)
+            if self.debug:
+                print(the_input)
 
-            # Doing boundrary conditions
-            # Input the correct data to left boundrary
-            the_input = tf.tensor_scatter_nd_update(
-                the_input,
-                np.array(
-                    [np.zeros(self.nPOD),
-                     np.zeros(self.nPOD),
-                     np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
-                               self.nPOD*self.cumulative_steps[0])],
-                    dtype=np.int32).T,
-                boundrary_condition[
-                    0, i + self.start_from])
+            the_input = self.add_bc(the_input, i, boundrary_condition)
 
-            # Input data to right boundrary
-            the_input = tf.tensor_scatter_nd_update(
-                the_input,
-                np.array(
-                    [np.ones(self.nPOD) * (len(the_input)-1),
-                     np.zeros(self.nPOD),
-                     np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
-                               self.nPOD*self.cumulative_steps[1])],
-                    dtype=np.int32).T,
-                boundrary_condition[
-                    1, i + self.start_from])
+            if self.debug:
+                print(the_input)
 
             # Do a predict/update cycle
             for _ in range(self.cycles):
                 print("Cycle: \t " + str(_))
                 for j in domains:
                     print("Domain: \t " + str(j))
+                    if self.debug:
+                        print(current_latent[j])
+
                     current_latent_single.assign(current_latent[j])
                     tmp[0] = self.timestep_loopDD(
                         the_input[j],
                         current_latent_single)
 
                     # Essentially updated[j] = tmp
-                    updated = tf.tensor_scatter_nd_update(
-                        updated,
-                        np.array([
-                            np.ones(self.nLatent)*j,
-                            np.zeros(self.nLatent),
-                            np.arange(self.nLatent)],
-                         dtype=np.int32).T,
-                        tmp[0][0])
+                    updated = self.update_updated(tmp, updated, j)
 
                     # Update the next prediction
                     prediction[j, 0] = self.gan.generator(
                         updated[j],
                         training=False)
 
-                    # Communicate the update to neighbours
-                    # everybody except leftmost updates to the left
-                    if j != 0:
-                        the_input = tf.tensor_scatter_nd_update(
-                            the_input,
-                            np.array(
-                                [np.ones(self.nPOD) * (j-1),
-                                 np.zeros(self.nPOD),
-                                 np.arange(self.nPOD*(
-                                     self.cumulative_steps[1]-1
-                                     ),
-                                 self.nPOD*self.cumulative_steps[1])],
-                                dtype=np.int32).T,
-                            prediction[j, 0, -self.nPOD:])
-
-                    # everybody except rightmost updates to the right
-                    if j != np.max(domains):
-                        the_input = tf.tensor_scatter_nd_update(
-                            the_input,
-                            np.array(
-                                [np.ones(self.nPOD) * (j+1),
-                                 np.zeros(self.nPOD),
-                                 np.arange(self.nPOD*(
-                                     self.cumulative_steps[0] - 1
-                                     ),
-                                 self.nPOD*self.cumulative_steps[0])],
-                                dtype=np.int32).T,
-                            prediction[j, 0, -self.nPOD:])
+                    self.communicate(the_input, prediction, j, domains)
 
                     current_latent = updated
 
@@ -376,18 +354,11 @@ class Optimize:
             print("Domain: \t 0")
             current_latent_single.assign(current_latent[0])
             tmp[0] = self.timestep_loopDD(
-                    the_input[j],
+                    the_input[0],
                     current_latent_single)
 
             # updated[j] = tmp
-            updated = tf.tensor_scatter_nd_update(
-                updated,
-                np.array([
-                    np.zeros(self.nLatent),
-                    np.zeros(self.nLatent),
-                    np.arange(self.nLatent)],
-                    dtype=np.int32).T,
-                tmp[0][0])
+            updated = self.update_updated(tmp, updated, 0)
 
             prediction[0, 0] = self.gan.generator(
                 updated[0], training=False)
@@ -405,13 +376,20 @@ class Optimize:
 
         return flds
 
-    def predictDD(self, training_data, boundrary_conditions, dim_steps=None):
+    def predictDD(self,
+                  training_data: np.ndarray,
+                  boundrary_conditions: np.ndarray,
+                  dim_steps=None
+                  ) -> list:
         """
-        Communicator with optimizaiton scripts.
-        Breaks up training data and feeds it forward.
+        Prediction script if Domain Decomposition is applied
 
         Args:
             training_data (np.ndarray)
+            boundrary_condition (np.ndarray): values for
+                leftmost and rightmost domains
+            dim_steps (np.ndarray): number of samples in each
+                dimension of gan
         """
         # Updating these values only if DD is used
         self.evaluated_subdomains = len(training_data)
@@ -436,3 +414,140 @@ class Optimize:
                 ].reshape(-1, self.nPOD))
 
         return self.timestepsDD(initial_comp, inn, boundrary_conditions)
+
+    def add_bc(self,
+               the_input,
+               i: int,
+               boundrary_condition: np.ndarray
+               ):
+        """Adding boundrary conditions to left and rightmost domains
+
+        Args:
+            the_input (tensor): Current iteration tensor
+            i (int): Iteration number
+            boundrary_condition (np.ndarray): Boundrary values 
+
+        Returns:
+            tensor: Updated iteration tensor
+        """
+        # Doing boundrary conditions
+        # Input the correct data to left boundrary
+        for k in range(len(the_input)):
+            the_input = tf.tensor_scatter_nd_update(
+                the_input,
+                np.array(
+                    [np.ones(self.nPOD)*k,
+                        np.zeros(self.nPOD),
+                        np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
+                                  self.nPOD*self.cumulative_steps[0])],
+                    dtype=np.int32).T,
+                np.zeros(self.nPOD))
+
+            the_input = tf.tensor_scatter_nd_update(
+                the_input,
+                np.array(
+                    [np.ones(self.nPOD)*k,
+                        np.zeros(self.nPOD),
+                        np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
+                                  self.nPOD*self.cumulative_steps[1])],
+                    dtype=np.int32).T,
+                np.zeros(self.nPOD))
+
+        the_input = tf.tensor_scatter_nd_update(
+            the_input,
+            np.array(
+                [np.zeros(self.nPOD),
+                    np.zeros(self.nPOD),
+                    np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
+                              self.nPOD*self.cumulative_steps[0])],
+                dtype=np.int32).T,
+            boundrary_condition[
+                0, i*self.dt + self.start_from])
+
+        # Input data to right boundrary
+        the_input = tf.tensor_scatter_nd_update(
+            the_input,
+            np.array(
+                [np.ones(self.nPOD) * (len(the_input)-1),
+                    np.zeros(self.nPOD),
+                    np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
+                              self.nPOD*self.cumulative_steps[1])],
+                dtype=np.int32).T,
+            boundrary_condition[
+                1, i*self.dt + self.start_from])
+        # Initializing predicted values
+
+        return the_input
+
+    def communicate(self,
+                    the_input,
+                    prediction: np.ndarray,
+                    j: int,
+                    domains: np.ndarray
+                    ):
+        """Communicate with neighbouring subdomains
+
+        Args:
+            the_input (tensor): Current iteration guess
+            prediction (np.ndarray): Latent values
+            j (int): Domain number
+            domains (np.ndarray): Iteration ordering of domains
+
+        Returns:
+            tensor: Updated iteration tensor
+        """
+        # Communicate the update to neighbours
+        # everybody except leftmost updates to the left
+        if j != 0:
+            the_input = tf.tensor_scatter_nd_update(
+                the_input,
+                np.array(
+                    [np.ones(self.nPOD) * (j-1),
+                        np.zeros(self.nPOD),
+                        np.arange(self.nPOD*(
+                            self.cumulative_steps[1]-1
+                            ),
+                        self.nPOD*self.cumulative_steps[1])],
+                    dtype=np.int32).T,
+                prediction[j, 0, -self.nPOD:])
+
+        # everybody except rightmost updates to the right
+        if j != np.max(domains):
+            the_input = tf.tensor_scatter_nd_update(
+                the_input,
+                np.array(
+                    [np.ones(self.nPOD) * (j+1),
+                        np.zeros(self.nPOD),
+                        np.arange(self.nPOD*(
+                            self.cumulative_steps[0] - 1
+                            ),
+                        self.nPOD*self.cumulative_steps[0])],
+                    dtype=np.int32).T,
+                prediction[j, 0, -self.nPOD:])
+
+        return the_input
+
+    def update_updated(self,
+                       tmp: np.ndarray,
+                       updated,
+                       j: int
+                       ):
+        """Update latent values
+
+        Args:
+            tmp (np.ndarray): Values for current timestep
+            updated (tensor): Values for previous timestep
+            j (int): Domain number
+
+        Returns:
+            tensor: Updated tensor
+        """
+        updated = tf.tensor_scatter_nd_update(
+                        updated,
+                        np.array([
+                            np.ones(self.nLatent)*j,
+                            np.zeros(self.nLatent),
+                            np.arange(self.nLatent)],
+                         dtype=np.int32).T,
+                        tmp[0][0])
+        return updated
