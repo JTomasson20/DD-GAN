@@ -42,6 +42,11 @@ class Optimize:
     # Debug mode
     debug: bool = False
 
+    # Zeros, Past or None
+    initial_values: str = "Past"
+    reset: bool = False
+    disturb: bool = False
+
     def mse_loss(self, input, output):
         """Mean square error loss function
 
@@ -318,22 +323,30 @@ class Optimize:
         for i in range(self.npredictions):
             print('Time step: \t', i)
             if self.debug:
-                print(the_input)
+                print(np.array(the_input))
 
             the_input = self.add_bc(the_input, i, boundrary_condition)
 
             if self.debug:
-                print(the_input)
+                print(np.array(the_input))
 
             # Do a predict/update cycle
             for _ in range(self.cycles):
                 print("Cycle: \t " + str(_))
                 for j in domains:
                     print("Domain: \t " + str(j))
-                    if self.debug:
-                        print(current_latent[j])
 
-                    current_latent_single.assign(current_latent[j])
+                    if self.disturb:
+                        current_latent_single.assign(
+                            current_latent[j] +
+                            tf.random.normal(
+                                [1, self.nLatent],
+                                mean=0.0,
+                                stddev=0.05)
+                                )
+                    else:
+                        current_latent_single.assign(current_latent[j])
+
                     tmp[0] = self.timestep_loopDD(
                         the_input[j],
                         current_latent_single)
@@ -346,13 +359,24 @@ class Optimize:
                         updated[j],
                         training=False)
 
-                    self.communicate(the_input, prediction, j, domains)
+                    the_input = self.communicate(the_input,
+                                                 prediction,
+                                                 j, domains)
 
                     current_latent = updated
-
             # Redo the first one to complete the final cycle
             print("Domain: \t 0")
-            current_latent_single.assign(current_latent[0])
+            if self.disturb:
+                current_latent_single.assign(
+                    current_latent[0] +
+                    tf.random.normal(
+                        [1, self.nLatent],
+                        mean=0.0,
+                        stddev=0.05)
+                        )
+            else:
+                current_latent_single.assign(current_latent[0])
+
             tmp[0] = self.timestep_loopDD(
                     the_input[0],
                     current_latent_single)
@@ -363,7 +387,17 @@ class Optimize:
             prediction[0, 0] = self.gan.generator(
                 updated[0], training=False)
 
+            the_input = self.communicate(the_input,
+                                         prediction,
+                                         0, domains)
             current_latent = updated
+            if self.debug:
+                print(np.array(the_input))
+
+            the_input = self.initial_guess(the_input)
+
+            if self.debug:
+                print(np.array(the_input))
 
             # Last 4 images become next first 4 images
             prediction[:, :, :self.nOptimized] = the_input
@@ -373,6 +407,8 @@ class Optimize:
             new_result = prediction[:, :, self.nOptimized:]
             flds = tf.concat([flds, new_result], 1)
             the_input = tf.convert_to_tensor(next_input, dtype=np.float32)
+            if self.debug:
+                print(np.array(the_input))
 
         return flds
 
@@ -415,51 +451,75 @@ class Optimize:
 
         return self.timestepsDD(initial_comp, inn, boundrary_conditions)
 
+    def initial_guess(self,
+                      the_input,
+                      ):
+        """
+        Adding initial guesses for next iteration
+
+        Args:
+            the_input (tensor): Current iteration tensor
+
+        Returns:
+            tensor: Updated iteration tensor
+        """
+        if self.initial_values == "Zeros":
+            for k in range(len(the_input)):
+                for j in range(2):
+                    the_input = tf.tensor_scatter_nd_update(
+                        the_input,
+                        np.array(
+                            [np.ones(self.nPOD)*k,
+                             np.zeros(self.nPOD),
+                             np.arange(self.nPOD*(self.cumulative_steps[j]),
+                                       self.nPOD*(self.cumulative_steps[j]+1)
+                                       )],
+                            dtype=np.int32).T,
+                        np.zeros(self.nPOD))
+
+        elif self.initial_values == "Past":
+            for k in range(len(the_input)):
+                for j in range(2):
+                    the_input = tf.tensor_scatter_nd_update(
+                        the_input,
+                        np.array(
+                            [np.ones(self.nPOD)*k,
+                             np.zeros(self.nPOD),
+                             np.arange(self.nPOD*(self.cumulative_steps[1-j]),
+                                       self.nPOD*(self.cumulative_steps[1-j]+1)
+                                       )],
+                            dtype=np.int32).T,
+                        the_input[k, 0,
+                                  self.nPOD*(self.cumulative_steps[1-j]-1):
+                                  self.nPOD*(self.cumulative_steps[1-j])])
+
+        return the_input
+
     def add_bc(self,
                the_input,
                i: int,
                boundrary_condition: np.ndarray
                ):
-        """Adding boundrary conditions to left and rightmost domains
+        """
+        Adding boundrary conditions to left and rightmost domains
 
         Args:
             the_input (tensor): Current iteration tensor
             i (int): Iteration number
-            boundrary_condition (np.ndarray): Boundrary values 
+            boundrary_condition (np.ndarray): Boundrary values
 
         Returns:
             tensor: Updated iteration tensor
         """
         # Doing boundrary conditions
         # Input the correct data to left boundrary
-        for k in range(len(the_input)):
-            the_input = tf.tensor_scatter_nd_update(
-                the_input,
-                np.array(
-                    [np.ones(self.nPOD)*k,
-                        np.zeros(self.nPOD),
-                        np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
-                                  self.nPOD*self.cumulative_steps[0])],
-                    dtype=np.int32).T,
-                np.zeros(self.nPOD))
-
-            the_input = tf.tensor_scatter_nd_update(
-                the_input,
-                np.array(
-                    [np.ones(self.nPOD)*k,
-                        np.zeros(self.nPOD),
-                        np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
-                                  self.nPOD*self.cumulative_steps[1])],
-                    dtype=np.int32).T,
-                np.zeros(self.nPOD))
-
         the_input = tf.tensor_scatter_nd_update(
             the_input,
             np.array(
                 [np.zeros(self.nPOD),
-                    np.zeros(self.nPOD),
-                    np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
-                              self.nPOD*self.cumulative_steps[0])],
+                 np.zeros(self.nPOD),
+                 np.arange(self.nPOD*(self.cumulative_steps[0] - 1),
+                           self.nPOD*self.cumulative_steps[0])],
                 dtype=np.int32).T,
             boundrary_condition[
                 0, i*self.dt + self.start_from])
@@ -485,7 +545,8 @@ class Optimize:
                     j: int,
                     domains: np.ndarray
                     ):
-        """Communicate with neighbouring subdomains
+        """
+        Communicate with neighbouring subdomains
 
         Args:
             the_input (tensor): Current iteration guess
@@ -504,10 +565,9 @@ class Optimize:
                 np.array(
                     [np.ones(self.nPOD) * (j-1),
                         np.zeros(self.nPOD),
-                        np.arange(self.nPOD*(
-                            self.cumulative_steps[1]-1
-                            ),
-                        self.nPOD*self.cumulative_steps[1])],
+                        np.arange(
+                            self.nPOD*(self.cumulative_steps[1]-1),
+                            self.nPOD*self.cumulative_steps[1])],
                     dtype=np.int32).T,
                 prediction[j, 0, -self.nPOD:])
 
@@ -518,10 +578,9 @@ class Optimize:
                 np.array(
                     [np.ones(self.nPOD) * (j+1),
                         np.zeros(self.nPOD),
-                        np.arange(self.nPOD*(
-                            self.cumulative_steps[0] - 1
-                            ),
-                        self.nPOD*self.cumulative_steps[0])],
+                        np.arange(
+                            self.nPOD*(self.cumulative_steps[0] - 1),
+                            self.nPOD*self.cumulative_steps[0])],
                     dtype=np.int32).T,
                 prediction[j, 0, -self.nPOD:])
 

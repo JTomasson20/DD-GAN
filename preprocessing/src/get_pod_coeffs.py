@@ -295,7 +295,7 @@ def get_pod_coeffs(data_dir='./../../data/FPC_Re3900_2D_CG_new/',
         np.save(out_dir + "/pod_coeffs_field_{}".format(
             field_names[iField]), np.array(pod_coeffs))
         np.save(out_dir + "/pod_basis_field_{}".format(
-            field_names[iField]), np.array(v))
+            field_names[iField]), np.array(basis))
         np.savetxt(out_dir + "/pod_eigenvalues_field_{}".format(
             field_names[iField]), np.array(eigvalues))
 

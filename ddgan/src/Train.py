@@ -214,7 +214,9 @@ class GAN:
         """
         return tf.reduce_mean(d_fake) - tf.reduce_mean(d_real)
 
-    def generator_loss(self, d_fake: np.ndarray) -> float:
+    def generator_loss(self,
+                       d_fake: np.ndarray
+                       ) -> float:
         """
         Calculate the loss of the generator as the negative reduced fake
         discriminator loss. The generator has the task of fooling the
@@ -228,17 +230,17 @@ class GAN:
         """
         return -tf.reduce_mean(d_fake)
 
-    def save_gan(self, epoch: int, folder='models/') -> None:
+    def save_gan(self,
+                 epoch: int
+                 ) -> None:
         """
         Saving a trained model
 
         Args:
             epoch (int): Epoch number
-            folder (string): model location. Defaults to
-                ´models´
         """
-        saved_g_dir = './' + folder + 'saved_g_' + str(epoch + 1)
-        saved_d_dir = './' + folder + 'saved_c_' + str(epoch + 1)
+        saved_g_dir = './' + self.model_location + 'saved_g_' + str(epoch + 1)
+        saved_d_dir = './' + self.model_location + 'saved_c_' + str(epoch + 1)
         tf.keras.models.save_model(self.generator, saved_g_dir)
         tf.keras.models.save_model(self.discriminator, saved_d_dir)
 
@@ -333,9 +335,9 @@ class GAN:
         # Saving the loss data in a csv file
         np.savetxt('losses.csv', losses, delimiter=',')
 
-    def learn_hypersurface_from_POD_coeffs(
-            self,
-            training_data: np.ndarray):
+    def learn_hypersurface_from_POD_coeffs(self,
+                                           training_data: np.ndarray
+                                           ):
         """
         Umbrella function that makes logs and begins
             training
