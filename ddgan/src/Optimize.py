@@ -193,8 +193,8 @@ class Optimize:
         converged = np.zeros((self.npredictions, self.nLatent))
         latent = np.zeros((self.npredictions, self.nLatent))
 
-        current = tf.Variable(tf.zeros([1, self.gan.nsteps]))
-        prediction = np.zeros((1, self.nLatent * self.nPOD))
+        current = tf.Variable(tf.zeros([1, self.nLatent]))
+        prediction = np.zeros((1, self.gan.nsteps * self.nPOD))
 
         for i in range(self.npredictions):
             print('Time step: \t', i)
@@ -466,32 +466,34 @@ class Optimize:
         if self.initial_values == "Zeros":
             for k in range(len(the_input)):
                 for j in range(2):
-                    the_input = tf.tensor_scatter_nd_update(
-                        the_input,
-                        np.array(
-                            [np.ones(self.nPOD)*k,
-                             np.zeros(self.nPOD),
-                             np.arange(self.nPOD*(self.cumulative_steps[j]),
-                                       self.nPOD*(self.cumulative_steps[j]+1)
-                                       )],
-                            dtype=np.int32).T,
-                        np.zeros(self.nPOD))
+                    if self.dim_steps[j] != 0:
+                        the_input = tf.tensor_scatter_nd_update(
+                          the_input,
+                          np.array(
+                              [np.ones(self.nPOD)*k,
+                               np.zeros(self.nPOD),
+                               np.arange(self.nPOD*(self.cumulative_steps[j]),
+                                         self.nPOD*(self.cumulative_steps[j]+1)
+                                         )],
+                              dtype=np.int32).T,
+                          np.zeros(self.nPOD))
 
         elif self.initial_values == "Past":
             for k in range(len(the_input)):
                 for j in range(2):
-                    the_input = tf.tensor_scatter_nd_update(
-                        the_input,
-                        np.array(
+                    if self.dim_steps[1-j] != 0:
+                        the_input = tf.tensor_scatter_nd_update(
+                          the_input,
+                          np.array(
                             [np.ones(self.nPOD)*k,
                              np.zeros(self.nPOD),
-                             np.arange(self.nPOD*(self.cumulative_steps[1-j]),
-                                       self.nPOD*(self.cumulative_steps[1-j]+1)
+                             np.arange(self.nPOD*(self.cumulative_steps[1-j])-2,
+                                       self.nPOD*(self.cumulative_steps[1-j]+1)-2
                                        )],
                             dtype=np.int32).T,
-                        the_input[k, 0,
-                                  self.nPOD*(self.cumulative_steps[1-j]-1):
-                                  self.nPOD*(self.cumulative_steps[1-j])])
+                          the_input[k, 0,
+                                    self.nPOD*(self.cumulative_steps[1-j]-1):
+                                    self.nPOD*(self.cumulative_steps[1-j])])
 
         return the_input
 
@@ -525,16 +527,17 @@ class Optimize:
                 0, i*self.dt + self.start_from])
 
         # Input data to right boundrary
-        the_input = tf.tensor_scatter_nd_update(
-            the_input,
-            np.array(
-                [np.ones(self.nPOD) * (len(the_input)-1),
-                    np.zeros(self.nPOD),
-                    np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
-                              self.nPOD*self.cumulative_steps[1])],
-                dtype=np.int32).T,
-            boundrary_condition[
-                1, i*self.dt + self.start_from])
+        if self.dim_steps[1] != 0:
+            the_input = tf.tensor_scatter_nd_update(
+                the_input,
+                np.array(
+                    [np.ones(self.nPOD) * (len(the_input)-1),
+                        np.zeros(self.nPOD),
+                        np.arange(self.nPOD*(self.cumulative_steps[1] - 1),
+                                  self.nPOD*self.cumulative_steps[1])],
+                    dtype=np.int32).T,
+                boundrary_condition[
+                    1, i*self.dt + self.start_from])
         # Initializing predicted values
 
         return the_input
@@ -559,7 +562,7 @@ class Optimize:
         """
         # Communicate the update to neighbours
         # everybody except leftmost updates to the left
-        if j != 0:
+        if j != 0 and self.dim_steps[1] != 0:
             the_input = tf.tensor_scatter_nd_update(
                 the_input,
                 np.array(

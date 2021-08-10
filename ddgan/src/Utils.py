@@ -38,7 +38,11 @@ def truncated_normal(mean=0., sd=1., low=-4., upp=4.):
 
 # Clashes when trying to include this within the GAN class
 @tf.function
-def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
+def train_step(gan,
+               noise: np.ndarray,
+               real: np.ndarray,
+               reverse_step: bool = False,
+               ) -> None:
     """
     Training the gan for a single step
 
@@ -46,7 +50,9 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
         gan (GAN): Model object
         noise (np.ndarray): Gaussian noise input
         real (np.ndarray): Actual values
+        reverse_step(bool): Whether to make the discriminator take a step back
     """
+
     for i in range(gan.n_critic):
         with tf.GradientTape() as t:
             with tf.GradientTape() as t1:
@@ -59,7 +65,10 @@ def train_step(gan, noise: np.ndarray, real: np.ndarray) -> None:
                 c_inter = gan.discriminator(interpolated, training=True)
                 d_real = gan.discriminator(real, training=True)
                 d_fake = gan.discriminator(fake, training=True)
-                d_loss = gan.discriminator_loss(d_real, d_fake)
+                if reverse_step:
+                    d_loss = gan.discriminator_loss(d_fake, d_real)
+                else:
+                    d_loss = gan.discriminator_loss(d_real, d_fake)
 
             grad_interpolated = t1.gradient(c_inter, interpolated)
             slopes = tf.sqrt(tf.reduce_sum(

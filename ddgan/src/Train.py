@@ -66,7 +66,10 @@ class GAN:
     # Only in use if noise = True
     noise_generator = None
     # Standard deviation of a normal distribution with mu = 0
-    noise_level: float = 0.02
+    noise_level: float = 0.001
+
+    # The periodicity of making the discriminator taking a step back
+    n_gradient_ascent: int = 500
 
     def setup(self, find_old_model=False) -> None:
         """
@@ -82,10 +85,8 @@ class GAN:
             beta_2=0.9
             )
 
-        self.discriminator_opt = tf.keras.optimizers.Nadam(
-            learning_rate=self.disc_learning_rate,
-            beta_1=0,
-            beta_2=0.9
+        self.discriminator_opt = tf.keras.optimizers.Adam(
+            learning_rate=self.disc_learning_rate
             )
 
         # Data augmentation noise
@@ -121,13 +122,13 @@ class GAN:
         """
         self.generator = tf.keras.Sequential()
         self.generator.add(tf.keras.layers.Dense(
-                                10, input_shape=(self.nLatent, ),
+                                100, input_shape=(self.nLatent, ),
                                 activation='relu',
                                 kernel_initializer=self.initializer))  # 5
 
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
-                                10, activation='relu',
+                                100, activation='relu',
                                 kernel_initializer=self.initializer))  # 10
 
         self.generator.add(tf.keras.layers.BatchNormalization())
@@ -318,7 +319,8 @@ class GAN:
                            shaped_real_data[i] +
                            self.noise_generator(
                                shaped_real_data[i].shape
-                               ).astype(np.float32))
+                               ).astype(np.float32),
+                           i % self.n_gradient_ascent == 0)
 
             self.print_loss()
             losses[epoch, :] = [epoch+1,
@@ -369,14 +371,18 @@ class GAN:
         for epoch in range(start_epoch, self.epochs):
             print('epoch: \t', epoch)
 
+            # Drawing samples from normal distribution for
+            # generator
             generator_input = self.random_generator(
                 [training_data.shape[0], self.nLatent]
                 )
 
-            # shuffle each epoch
-            real_data, generator_input = \
-                sklearn.utils.shuffle(training_data, generator_input)
+            # Shuffle each epoch. Command does so individually
+            real_data, generator_input = sklearn.utils.shuffle(
+                training_data, generator_input
+                )
 
+            # Reshaping GAN inputs
             shaped_real_data = real_data.reshape(
                                     self.batches,
                                     self.batch_size,
@@ -386,12 +392,15 @@ class GAN:
                                     self.batches,
                                     self.batch_size,
                                     self.nLatent)
-
+            # Single epoch
             for i in range(shaped_real_data.shape[0]):
                 train_step(self,
                            shaped_generator_input[i],
                            shaped_real_data[i] +
-                           self.noise_generator(shaped_real_data.shape))
+                           self.noise_generator(
+                               shaped_real_data[i].shape
+                               ).astype(np.float32),
+                           i % self.n_gradient_ascent == 0)
 
             self.print_loss()
             self.write_summary(epoch)
