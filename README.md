@@ -4,7 +4,7 @@
 
 [![codecov](https://codecov.io/gh/acse-jat20/DD-GAN/branch/main/graph/badge.svg?token=1LU7UG5OF9)](https://codecov.io/gh/acse-jat20/DD-GAN)
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/acse-jat20/DD-GAN/blob/main/LICENSE)
-[![Documentation Status](https://github.com/acse-jat20/DD-GAN/actions/workflows/docs.yml/badge.svg)](https://github.com/acse-jat20/DD-GAN/blob/main/docs/docs.pdf)
+<! -- [![Documentation Status](https://github.com/acse-jat20/DD-GAN/actions/workflows/docs.yml/badge.svg)](https://github.com/acse-jat20/DD-GAN/blob/main/docs/docs.pdf) -->
 ![example workflow](https://github.com/acse-jat20/DD-GAN/actions/workflows/health.yml/badge.svg)
 
 <!-- PROJECT LOGO -->
@@ -12,7 +12,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/acse-jat20/DD-GAN">
-    <img src="images/logo.png" alt="Logo" width="360" height="246">
+    <img src="images/GAN.png" alt="Logo" width="1500" height="1000">
   </a>
 
 <p align="center">
