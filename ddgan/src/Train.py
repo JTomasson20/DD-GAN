@@ -126,6 +126,7 @@ class GAN:
                                 activation='relu',
                                 kernel_initializer=self.initializer))  # 5
 
+        self.generator.add(tf.keras.layers.Dropout(0.3))
         self.generator.add(tf.keras.layers.BatchNormalization())
         self.generator.add(tf.keras.layers.Dense(
                                 100, activation='relu',

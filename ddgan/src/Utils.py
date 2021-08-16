@@ -41,7 +41,7 @@ def truncated_normal(mean=0., sd=1., low=-4., upp=4.):
 def train_step(gan,
                noise: np.ndarray,
                real: np.ndarray,
-               reverse_step: bool = False,
+               reverse_step: bool = False
                ) -> None:
     """
     Training the gan for a single step
@@ -56,11 +56,15 @@ def train_step(gan,
     for i in range(gan.n_critic):
         with tf.GradientTape() as t:
             with tf.GradientTape() as t1:
-                fake = gan.generator(noise, training=True)
+                fake = gan.generator(
+                    tf.random.normal(
+                        shape=noise.shape),
+                    training=True)
+
                 epsilon = tf.random.uniform(shape=[gan.batch_size, 1],
                                             minval=0., maxval=1.)
 
-                interpolated = real + epsilon * (fake - real)
+                interpolated = fake + epsilon * (real - fake)
                 t1.watch(interpolated)
                 c_inter = gan.discriminator(interpolated, training=True)
                 d_real = gan.discriminator(real, training=True)
