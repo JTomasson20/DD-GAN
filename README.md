@@ -12,7 +12,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/acse-jat20/DD-GAN">
-    <img src="images/GAN.png" alt="Logo" width="1500" height="1000">
+    <img src="images/GAN.png" alt="Logo" width="500" height="750">
   </a>
 
 <p align="center">
