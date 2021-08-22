@@ -23,7 +23,7 @@ jobs:
     # Run flake8 linter, exclude vtktools as it is not self made
     - name: run flake8
       run: |
-        python -m flake8 . --exclude=*vtktools.py
+        python -m flake8 . --exclude=*vtktools.py,preprocessing
 
   # This job installs dependencies and runs tests
   run-tests-codecov:
@@ -51,27 +51,3 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: coverage.xml # optional
         fail_ci_if_error: true # optional (default = false)
-
-  # This job installs dependencies and runs tests
-  run-tests-preprocessing:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-
-    # Install dependencies
-    - name: Set up Python 2.7
-      uses: actions/setup-python@v1
-      with:
-        python-version: 2.7
-
-    - name: Install data & dependencies
-      run: |
-        pip install pytest
-        cd preprocessing
-        pip install -r requirements.txt
-
-    # Run tests
-    - name: run tests
-      run: |
-        cd preprocessing/tests/
-        python -m pytest ./tests.py
