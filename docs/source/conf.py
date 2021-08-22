@@ -19,8 +19,8 @@ print(sys.path)
 # -- Project information -----------------------------------------------------
 
 project = 'DD-GAN'
-copyright = '2021, Jón Atli Tómasson and Zef Wolffs'
-author = 'Jón Atli Tómasson and Zef Wolffs'
+copyright = '2021, Jón Atli Tómasson'
+author = 'Jón Atli Tómasson'
 
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'

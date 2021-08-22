@@ -33,17 +33,17 @@ def gan(ddgan):
     """
 
     kwargs = {
-        "nsteps": 5,
-        "ndims": 5,
-        "lmbda": 10,
-        "n_critic": 5,
-        "batches": 10,
-        "batch_size": 20,
-        "seed": 143
+        "nsteps": 10,
+        "ndims": 10,
+        "nLatent": 100,
+        "batch_size": 45,
+        "batches": 80,
+        "seed": 143,
+        "epochs": 2
     }
 
     gan = ddgan.GAN(**kwargs)
-    gan.setup()
+    gan.setup(find_old_model=False)
     ddgan.set_seed(gan.seed)
 
     return gan
@@ -62,12 +62,13 @@ def optimize(gan, ddgan):
         Optimizer: The optimizer
     """
     kwargs_opt = {
+        "start_from": 100,
         "nPOD": 5,
-        "nLatent": 5,
-        "npredictions": 20,
-        "iterations": 20,
-        "optimizer_epochs": 5000,
-        "gan": gan
+        "nLatent": 10,
+        "npredictions": 1,
+        "optimizer_epochs": 2,
+        "gan": gan,
+        "bounds": 10
         }
 
     optimizer = ddgan.Optimize(**kwargs_opt)
@@ -86,7 +87,7 @@ def load_data(gan):
     Returns:
         tuple: Variables related to input data
     """
-    csv_data = np.loadtxt('./data/processed/POD_coeffs_1_204_orig.csv',
+    csv_data = np.loadtxt('./data/processed/Single/POD_coeffs_1_204_orig.csv',
                           delimiter=',')
     csv_data = np.float32(csv_data)
 
@@ -103,15 +104,11 @@ def load_data(gan):
 
     training_data = np.zeros((t_end, nPOD * gan.nsteps), dtype=np.float32)
 
-    input_to_GAN = tf.random.normal([training_data.shape[0],
-                                     gan.ndims])
-    input_to_GAN = input_to_GAN.numpy()
-
     for step in range(gan.nsteps):
         training_data[:, step*nPOD:(step+1)*nPOD] = csv_data[t_begin+step:
                                                              t_end+step, :]
 
-    return training_data, input_to_GAN, nPOD, scaling
+    return training_data, nPOD, scaling
 
 
 def test_set_seed(ddgan):
@@ -135,12 +132,13 @@ def test_gan_setup(ddgan):
         ddgan (module): ddgan module with all functions
     """
     kwargs = {
-        "nsteps": 5,
-        "ndims": 5,
-        "lmbda": 10,
-        "n_critic": 5,
-        "batches": 10,
-        "batch_size": 20
+        "nsteps": 10,
+        "ndims": 10,
+        "nLatent": 100,
+        "batch_size": 45,
+        "batches": 80,
+        "seed": 143,
+        "epochs": 100
         }
 
     gan = ddgan.GAN(**kwargs)
@@ -161,13 +159,12 @@ def test_train_gan(load_data, gan):
         load_data (tuple): Variables related to input data
         gan (GAN): The GAN itself
     """
-    training_data, input_to_GAN, nPOD, _ = load_data
+    training_data, _, _ = load_data
 
     g_layers_pre = gan.generator.layers[0].get_weights()[0]
     d_layers_pre = gan.discriminator.layers[0].get_weights()[0]
 
-    gan.learn_hypersurface_from_POD_coeffs(nPOD, input_to_GAN, training_data,
-                                           5, epochs=2)
+    gan.learn_hypersurface_from_POD_coeffs(training_data)
 
     # Make sure output types are correct
 
@@ -203,7 +200,7 @@ def test_optimize_gan(gan, optimize, load_data):
         load_data (tupe): Variables related to input data
     """
 
-    training_data, _, nPOD, scaling = load_data
+    training_data, nPOD, scaling = load_data
     nLatent = 5
 
     start_from = 100
