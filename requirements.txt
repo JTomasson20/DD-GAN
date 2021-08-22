@@ -4,3 +4,10 @@ sklearn
 flake8
 pytest-cov
 scipy
+pytest
+keras
+pandas
+tensorflow
+scikit-learn
+matplotlib
+jupyter

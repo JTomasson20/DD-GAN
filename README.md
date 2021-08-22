@@ -1,10 +1,11 @@
 # DD-GAN
 
-## Domain Decomposition Predictive Generative Adversarial Network
+## Domain Decomposition Predictive Generative Adversarial Network for modelling fluid flow
 
 [![codecov](https://codecov.io/gh/acse-jat20/DD-GAN/branch/main/graph/badge.svg?token=1LU7UG5OF9)](https://codecov.io/gh/acse-jat20/DD-GAN)
 [![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/acse-jat20/DD-GAN/blob/main/LICENSE)
 ![example workflow](https://github.com/acse-jat20/DD-GAN/actions/workflows/health.yml/badge.svg)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 <!-- [![Documentation Status](https://github.com/acse-jat20/DD-GAN/actions/workflows/docs.yml/badge.svg)](https://github.com/acse-jat20/DD-GAN/blob/main/docs/docs.pdf) -->
 
 <!-- PROJECT LOGO -->
@@ -61,11 +62,8 @@ This project contains an intuitive library for interacting with a domain decompo
 
 ## Getting Started
 
-```sh
-git clone https://github.com/acse-jat20/DD-GAN
-```
+### Installation
 
-## Installation
 
 1. ```git clone https://github.com/acse-jat20/DD-GAN```
 2. ```cd ./DD-GAN```
@@ -73,13 +71,17 @@ git clone https://github.com/acse-jat20/DD-GAN
 
 <!-- USAGE EXAMPLES -->
 
-## Usage
+### Usage
 
 In a python file, import the following to use all of the functions:
 
 ```python
 import ddgan
 ```
+
+### Example data:
+
+* The POD coefficients used in the project can be found under [/data](./data/processed/DD/) *- Original .vtu files curteousy of Dr. Claire Heaney*
 
 <!-- ACKNOWLEDGEMENTS 
 _For more information, please refer to the report in this repo_
@@ -95,8 +97,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-* Tómasson, Jón Atli jon.tomasson20@imperial.ac.uk
-* Wolffs, Zef zef.wolffs20@imperial.ac.uk
+* Tómasson, Jón Atli jon.tomasson1@gmail.com
 
 <!-- ACKNOWLEDGEMENTS -->
 
@@ -104,7 +105,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 * Dr. Claire Heaney
 * Prof. Christopher Pain
-* Royal School of Mines, Imperial College London
+* Zef Wolffs
 
 <!-- MARKDOWN LINKS & IMAGES -->
 

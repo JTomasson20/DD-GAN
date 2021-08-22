@@ -487,8 +487,10 @@ class Optimize:
                           np.array(
                             [np.ones(self.nPOD)*k,
                              np.zeros(self.nPOD),
-                             np.arange(self.nPOD*(self.cumulative_steps[1-j])-2,
-                                       self.nPOD*(self.cumulative_steps[1-j]+1)-2
+                             np.arange(self.nPOD *
+                                       (self.cumulative_steps[1-j]),
+                                       self.nPOD *
+                                       (self.cumulative_steps[1-j]+1)
                                        )],
                             dtype=np.int32).T,
                           the_input[k, 0,
