@@ -20,8 +20,8 @@ class GAN:
     """
     # Keyword argument definitions
     # Input data parameters
-    nsteps: int = 5  # Consecutive timesteps
-    ndims: int = 5  # Reduced dimensions
+    nsteps: int = 10  # Consecutive timesteps
+    ndims: int = 10  # Reduced dimensions
     batch_size: int = 20  # 32
     batches: int = 10  # 900
     seed: int = 143  # Random seed for reproducability

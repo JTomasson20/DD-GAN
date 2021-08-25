@@ -1,9 +1,10 @@
 from pytest import fixture
 import numpy as np
-import tensorflow as tf
 import sklearn.preprocessing
 
 """
+The following tests test the non-DD version of the DD-GAN
+
 Please execute module from root of repository
 """
 
@@ -34,12 +35,14 @@ def gan(ddgan):
 
     kwargs = {
         "nsteps": 10,
-        "ndims": 10,
-        "nLatent": 100,
-        "batch_size": 45,
-        "batches": 80,
+        "ndims": 5,
+        "batch_size": 40,
+        "batches": 5,
         "seed": 143,
-        "epochs": 2
+        "epochs": 2,
+        "n_critic": 10,
+        "gen_learning_rate": 5e-4,
+        "disc_learning_rate": 5e-4,
     }
 
     gan = ddgan.GAN(**kwargs)
@@ -65,11 +68,10 @@ def optimize(gan, ddgan):
         "start_from": 100,
         "nPOD": 5,
         "nLatent": 10,
-        "npredictions": 1,
-        "optimizer_epochs": 2,
-        "gan": gan,
-        "bounds": 10
-        }
+        "npredictions": 2,
+        "optimizer_epochs": 11,
+        "gan": gan
+    }
 
     optimizer = ddgan.Optimize(**kwargs_opt)
 
@@ -87,28 +89,28 @@ def load_data(gan):
     Returns:
         tuple: Variables related to input data
     """
-    csv_data = np.loadtxt('./data/processed/Single/POD_coeffs_1_204_orig.csv',
-                          delimiter=',')
-    csv_data = np.float32(csv_data)
+    csv_data = np.load('./data/processed/Single/pod_coeffs_field_Velocity.npy')
+    csv_data = csv_data[0, :, :]
 
-    nTrain = csv_data.shape[1]
-    nPOD = csv_data.shape[0]
-
-    csv_data = csv_data.T  # nTrain by nPOD
+    csv_data = np.float32(csv_data.T)
+    csv_data = csv_data[300:600, :5]
 
     scaling = sklearn.preprocessing.MinMaxScaler(feature_range=[-1, 1])
     csv_data = scaling.fit_transform(csv_data)
 
     t_begin = 0
-    t_end = nTrain - gan.nsteps + 1
+    t_end = 200
 
-    training_data = np.zeros((t_end, nPOD * gan.nsteps), dtype=np.float32)
+    training_data = np.zeros(
+        (t_end, gan.ndims * gan.nsteps),
+        dtype=np.float32)
 
     for step in range(gan.nsteps):
-        training_data[:, step*nPOD:(step+1)*nPOD] = csv_data[t_begin+step:
-                                                             t_end+step, :]
+        training_data[:,
+                      step*gan.ndims:(step+1)*gan.ndims
+                      ] = csv_data[t_begin+step:t_end+step, :]
 
-    return training_data, nPOD, scaling
+    return training_data, gan.ndims, scaling
 
 
 def test_set_seed(ddgan):
@@ -134,9 +136,9 @@ def test_gan_setup(ddgan):
     kwargs = {
         "nsteps": 10,
         "ndims": 10,
-        "nLatent": 100,
-        "batch_size": 45,
-        "batches": 80,
+        "nLatent": 10,
+        "batch_size": 10,
+        "batches": 10,
         "seed": 143,
         "epochs": 100
         }
@@ -200,21 +202,11 @@ def test_optimize_gan(gan, optimize, load_data):
         load_data (tupe): Variables related to input data
     """
 
-    training_data, nPOD, scaling = load_data
-    nLatent = 5
+    training_data, _, scaling = load_data
 
-    start_from = 100
-    inn = training_data[start_from,
-                        :(gan.nsteps-1)*nPOD].reshape(1, (gan.nsteps - 1) *
-                                                      nLatent)
+    flds = optimize.predict(training_data)
 
-    npredictions = 2
-
-    initial_comp = training_data[start_from,
-                                 :(gan.nsteps - 1)*nPOD].reshape((gan.nsteps -
-                                                                  1), nLatent)
-    flds = optimize.timesteps(initial_comp, inn, npredictions)
-
-    flds = scaling.inverse_transform(flds).T
-
-    assert type(flds) == np.ndarray
+    assert flds.shape == (
+        gan.nsteps + optimize.npredictions-1,
+        gan.ndims
+        )

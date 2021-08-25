@@ -37,7 +37,7 @@ class Optimize:
 
     # Number of optimized points, would normally keep
     # this as a private variable
-    nOptimized: int = 90
+    nOptimized: int = 50
 
     # Debug mode
     debug: bool = False
