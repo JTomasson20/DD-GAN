@@ -13,17 +13,18 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
-
-print(sys.path)
+sys.path.insert(0, os.path.abspath('../../ddgan/'))
+sys.path.insert(0, os.path.abspath('../../ddgan/src'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'DD-GAN'
+project = 'Domain Decomposition  and Generative Adversarial Networks \
+           for modelling fluid flow'
 copyright = '2021, Jón Atli Tómasson'
 author = 'Jón Atli Tómasson'
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.0'
+release = '0.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,6 +33,7 @@ release = '1.0.0'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinx.ext.autodoc',
+              'sphinx.ext.coverage',
               'sphinx.ext.napoleon']
 
 # Add any paths that contain templates here, relative to this directory.
@@ -40,7 +42,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 
 # -- Options for HTML output -------------------------------------------------

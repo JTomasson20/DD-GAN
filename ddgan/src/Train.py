@@ -1,5 +1,6 @@
 """
-Jón Atli Tómasson and Zef Wolffs
+This file includes the GAN class for training a DD-GAN
+
 """
 
 __all__ = ['GAN']
