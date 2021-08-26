@@ -57,15 +57,6 @@ class Optimize:
         Returns:
             int: mse loss value
         """
-
-        # if self.eigenvals is not None:
-        #     print(input.shape)
-        #     print(self.eigenvals.shape)
-        #     return self.mse(
-        #         tf.math.multiply(tf.math.sqrt(self.eigenvals), input),
-        #         tf.math.multiply(tf.math.sqrt(self.eigenvals), output)
-        #             )
-        # else:
         return self.mse(input, output)
 
     @tf.function
@@ -95,11 +86,6 @@ class Optimize:
         self.optimizer.apply_gradients(zip([gradients], [latent_var]))
 
         norm_latent_vars = tf.norm(latent_var)
-
-        # clipping to within 2.3 is equivalent to 98%
-        # if norm_latent_vars > 2.3:
-        #    latent_var = 2.3 / norm_latent_vars * latent_var
-        #    tf.print('clipping to ', tf.norm(latent_var))
 
         return loss, norm_latent_vars
 
@@ -256,9 +242,6 @@ class Optimize:
             ].reshape(self.gan.nsteps - 1, self.nPOD)
 
         flds = self.timesteps(initial_comp, inn)
-
-        if scaling is not None:
-            flds = scaling.inverse_transform(flds).T
 
         return flds
 
@@ -464,8 +447,14 @@ class Optimize:
             tensor: Updated iteration tensor
         """
         if self.initial_values == "Zeros":
+
+            # Iterate up and down the domain
             for k in range(len(the_input)):
+
+                # Iterate through neighbours
                 for j in range(2):
+
+                    # If not an end node
                     if self.dim_steps[j] != 0:
                         the_input = tf.tensor_scatter_nd_update(
                           the_input,
@@ -479,8 +468,14 @@ class Optimize:
                           np.zeros(self.nPOD))
 
         elif self.initial_values == "Past":
+
+            # Iterate up and down the domain
             for k in range(len(the_input)):
+
+                # Iterate through neighbours
                 for j in range(2):
+
+                    # If not an end node
                     if self.dim_steps[1-j] != 0:
                         the_input = tf.tensor_scatter_nd_update(
                           the_input,
@@ -497,6 +492,7 @@ class Optimize:
                                     self.nPOD*(self.cumulative_steps[1-j]-1):
                                     self.nPOD*(self.cumulative_steps[1-j])])
 
+        # Future addition: first and second order guess
         return the_input
 
     def add_bc(self,
@@ -540,7 +536,6 @@ class Optimize:
                     dtype=np.int32).T,
                 boundrary_condition[
                     1, i*self.dt + self.start_from])
-        # Initializing predicted values
 
         return the_input
 
@@ -596,7 +591,8 @@ class Optimize:
                        updated,
                        j: int
                        ):
-        """Update latent values
+        """
+        Update latent values
 
         Args:
             tmp (np.ndarray): Values for current timestep

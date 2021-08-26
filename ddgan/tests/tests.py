@@ -126,6 +126,20 @@ def test_set_seed(ddgan):
     assert np.random.get_state()[1][0] == 42
 
 
+def test_random_generator(ddgan):
+    """
+    Test that setting a seed works as expected
+
+    Args:
+        ddgan (module): ddgan module with all functions
+    """
+    normal_generator = ddgan.truncated_normal(low=-2., upp=2.)
+    samples = normal_generator(1000)
+    assert np.max(samples) <= 2.
+    assert np.min(samples) >= -2.
+    assert np.abs(np.mean(samples)) < 0.1
+
+
 def test_gan_setup(ddgan):
     """
     Test the setup function of the GAN class

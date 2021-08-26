@@ -1,9 +1,10 @@
 from pytest import fixture
 import numpy as np
+import tensorflow as tf
 import sklearn.preprocessing
 
 """
-The following tests test the non-DD version of the DD-GAN
+The following tests test the DD version of the DD-GAN
 
 Please execute module from root of repository
 """
@@ -24,7 +25,7 @@ def ddgan():
 @fixture(scope='module')
 def gan(ddgan):
     """
-    Create GAN
+    Create DD-GAN
 
     Args:
         ddgan (Module): The ddgan module
@@ -32,17 +33,18 @@ def gan(ddgan):
     Returns:
         GAN: The GAN
     """
+    # Number of neighbour and self time values.
+    # Corresponds to n = n_b, n_a, n_self
+    added_dims = [1, 1, 3]
 
     kwargs = {
-        "nsteps": 10,
-        "ndims": 5,
-        "batch_size": 40,
-        "batches": 5,
+        "nsteps": np.sum(added_dims),
+        "ndims": 10,
+        "nLatent": 100,
+        "batch_size": 20,
+        "batches": 10,
         "seed": 143,
-        "epochs": 2,
-        "n_critic": 10,
-        "gen_learning_rate": 5e-4,
-        "disc_learning_rate": 5e-4,
+        "epochs": 2
     }
 
     gan = ddgan.GAN(**kwargs)
@@ -65,11 +67,15 @@ def optimize(gan, ddgan):
         Optimizer: The optimizer
     """
     kwargs_opt = {
-        "start_from": 100,
-        "nPOD": 5,
-        "nLatent": 10,
+        "start_from": 0,
+        "nPOD": 10,
+        "nLatent": 100,
         "npredictions": 2,
-        "optimizer_epochs": 11,
+        "optimizer_epochs": 10,
+        "dt": 1,
+        "gan": gan,
+        "cycles": 2,
+        "disturb": True,
         "gan": gan
     }
 
@@ -89,41 +95,65 @@ def load_data(gan):
     Returns:
         tuple: Variables related to input data
     """
-    csv_data = np.load('./data/processed/Single/pod_coeffs_field_Velocity.npy')
-    csv_data = csv_data[0, :, :]
 
-    csv_data = np.float32(csv_data.T)
-    csv_data = csv_data[300:600, :5]
+    # Number of neighbour and self time values.
+    # Corresponds to n = n_b, n_a, n_self
+    added_dims = [1, 1, 3]
+    # Cumulative sum
+    cumulative_dims = [0, 1, 2]
 
-    scaling = sklearn.preprocessing.MinMaxScaler(feature_range=[-1, 1])
-    csv_data = scaling.fit_transform(csv_data)
+    csv_data = np.load('./data/processed/DD/pod_coeffs_field_Velocity.npy')
 
-    t_begin = 0
-    t_end = 200
+    subdomains = csv_data.shape[0]
+    nPOD = csv_data.shape[1]
+    datapoints = csv_data.shape[2]
+
+    assert 10 <= nPOD, "Make sure the data includes enough POD coeffs"
+    assert 200 <= datapoints, "Not enough data"
+    assert 4 <= subdomains, "Not enough domains"
+
+    csv_data = csv_data[:, :10, :300]
+    nPOD = 10
+    tmp_data = np.ones([subdomains, 300, nPOD])
+
+    for k in range(subdomains):
+        tmp_data[k] = csv_data[k].T
+
+    csv_data = tmp_data
+
+    scales = []
+    scaled_training = np.zeros_like(csv_data)
+    for i in range(subdomains):
+        scales.append(
+            sklearn.preprocessing.MinMaxScaler(feature_range=[-1, 1])
+            )
+        scaled_training[i] = scales[i].fit_transform(csv_data[i])
+
+    assert sum(added_dims[:-1]) == cumulative_dims[-1], 'Check added_dims'
 
     training_data = np.zeros(
-        (t_end, gan.ndims * gan.nsteps),
-        dtype=np.float32)
+            (2, 100, np.sum(added_dims * nPOD)
+             ), dtype=np.float32
+        )
+    # See image above on how the data is structured
+    for domain in range(2):
+        for i, dim in enumerate([0, 2, 1]):
+            for j, step in enumerate(range(0, 3)):
+                training_data[
+                    domain, :,
+                    cumulative_dims[i]*nPOD + j*nPOD:
+                    cumulative_dims[i]*nPOD + (j+1)*nPOD
+                    ] = scaled_training[dim + domain][step:100 + step, :]
 
-    for step in range(gan.nsteps):
-        training_data[:,
-                      step*gan.ndims:(step+1)*gan.ndims
-                      ] = csv_data[t_begin+step:t_end+step, :]
+    # Adding data for leftmost and rightmost domain
+    boundrary_conditions = []
+    boundrary_conditions.append(scaled_training[0, 2:])
+    boundrary_conditions.append(scaled_training[-1, 2:])
 
-    return training_data, gan.ndims, scaling
-
-
-def test_set_seed(ddgan):
-    """
-    Test that setting a seed works as expected
-
-    Args:
-        ddgan (module): ddgan module with all functions
-    """
-    ddgan.set_seed(42)
-
-    # We can only retrieve the numpy random seed
-    assert np.random.get_state()[1][0] == 42
+    joined_train_data = training_data.reshape(
+        (training_data.shape[1]*training_data.shape[0], training_data.shape[2])
+        )
+    return np.float32(joined_train_data), boundrary_conditions
 
 
 def test_gan_setup(ddgan):
@@ -137,7 +167,7 @@ def test_gan_setup(ddgan):
         "nsteps": 10,
         "ndims": 10,
         "nLatent": 10,
-        "batch_size": 10,
+        "batch_size": 20,
         "batches": 10,
         "seed": 143,
         "epochs": 100
@@ -161,12 +191,12 @@ def test_train_gan(load_data, gan):
         load_data (tuple): Variables related to input data
         gan (GAN): The GAN itself
     """
-    training_data, _, _ = load_data
+    training_data, _ = load_data
 
     g_layers_pre = gan.generator.layers[0].get_weights()[0]
     d_layers_pre = gan.discriminator.layers[0].get_weights()[0]
 
-    gan.learn_hypersurface_from_POD_coeffs(training_data)
+    gan.learn_hypersurface_from_POD_coeffs(np.float32(training_data))
 
     # Make sure output types are correct
 
@@ -189,11 +219,12 @@ def test_train_gan(load_data, gan):
                            gan.discriminator.layers[0].get_weights()[0])
 
 
-def test_optimize_gan(gan, optimize, load_data):
+def test_optimize_DD_gan(gan, optimize, load_data):
     """
     Test the optimization part of the GAN. Again, We can't really
     test for any exact values as changing one of any of the parameters of the
-    network would probably significantly influence the results. Therefore we do
+    network would probably significantly influence the results.
+    Therefore we do
     multiple weaker tests.
 
     Args:
@@ -202,9 +233,12 @@ def test_optimize_gan(gan, optimize, load_data):
         load_data (tupe): Variables related to input data
     """
 
-    training_data, _, scaling = load_data
+    training_data, boundrary = load_data
 
-    flds = optimize.predict(training_data)
+    flds = optimize.predict(
+        training_data,
+        tf.convert_to_tensor(np.array(boundrary, dtype=np.float32))
+        )
 
     assert flds.shape == (
         gan.nsteps + optimize.npredictions-1,
