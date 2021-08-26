@@ -11,7 +11,7 @@
 <!-- ABOUT THE PROJECT -->
 
 
-This project contains a library for interacting with a domain decomposition predictive GAN. This draws on ideas from recent research on [domain decomposition methods for reduced order modelling](https://www.sciencedirect.com/science/article/pii/S0045793019300350) and [predictive GANs](https://arxiv.org/abs/2105.07729) to predict fluid flow in time. Validation and examples performed using flow past a cylinder in high aspect ratio domains acan be found found here.
+This project contains a library for interacting with a domain decomposition predictive GAN. This draws on ideas from recent research on [domain decomposition methods for reduced order modelling](https://www.sciencedirect.com/science/article/pii/S0045793019300350) and [predictive GANs](https://arxiv.org/abs/2105.07729) to predict fluid flow in time. Validation and examples performed using flow past a cylinder in high aspect ratio domains can be found found here.
 
 ---
 <!-- PROJECT LOGO -->
@@ -67,9 +67,38 @@ This project contains a library for interacting with a domain decomposition pred
 * Tensorflow and other packages in ```requirements.txt```
 
 ## Getting Started
+### Traversing: Simplified filestructure
+
+    .
+    ├── data				# Various data files
+    │   ├── FPC_Re3900_2D_CG_old		# .vtu files of FPC
+    │   ├── processed			# End-to-end, integration tests (alternatively `e2e`)
+    │   │   ├── DD				# Decomposed .npy files
+    │   │   ├── Single			# Non-DD .npy files
+    │   │   └── old				# Non-DD .npy files from an outdated simulation
+    │   └── reconstructed 			# Reconstructed simulation example
+    ├── ddgan				# Main method
+    │   ├── src
+    │   │   ├── Optimize.py			# Class for predicting fluid flow
+    │   │   ├── Train.py			# Class for training a GAN
+    │   │   └── Utils.py			# Utils for training and predicting
+    │   └── tests 				# Unit testing for GAN
+    ├── docs				# Documentation files 
+    ├── examples                     	
+    │   ├── models/224			# Saved model for replication purposes 
+    │   └── DD-GAN_usage_example.ipynb	# Usage example notebook
+    ├── images
+    │   ├── flowcharts			# Flowcharts
+    │   ├── paraview			# paraview visualisations
+    │   └── plots				# Error plots and simulations
+    ├── LICENSE
+    ├── README.md
+    ├── environment.yml			# Conda env
+    ├── requirements.txt
+    └── setup.py
+
 
 ### Installation
-
 
 1. ```git clone https://github.com/acse-jat20/DD-GAN```
 2. ```cd ./DD-GAN```
