@@ -179,46 +179,6 @@ def test_gan_setup(ddgan):
     for att_name, att in kwargs.items():
         assert att == getattr(gan, att_name)
 
-
-def test_train_gan(load_data, gan):
-    """
-    Little test to make sure the training procedure works. We can't really
-    test for any exact values as changing one of any of the parameters of the
-    network would probably significantly influence the results. Therefore we do
-    multiple weaker tests.
-
-    Args:
-        load_data (tuple): Variables related to input data
-        gan (GAN): The GAN itself
-    """
-    training_data, _ = load_data
-
-    g_layers_pre = gan.generator.layers[0].get_weights()[0]
-    d_layers_pre = gan.discriminator.layers[0].get_weights()[0]
-
-    gan.learn_hypersurface_from_POD_coeffs(np.float32(training_data))
-
-    # Make sure output types are correct
-
-    assert type(gan.d_loss.result().numpy()) == np.float32
-    assert type(gan.d_loss.result().numpy()) == np.float32
-    assert type(gan.d_loss.result().numpy()) == np.float32
-
-    # We can also make sure the loss values are not bogus
-
-    assert 1e10 > gan.d_loss.result().numpy() > -100
-    assert 1e10 > gan.d_loss.result().numpy() > -100
-    assert 1e10 > gan.d_loss.result().numpy() > -100
-
-    # Let's also make sure the weights have actually changed since the start
-    # and supposedly some training has found place
-
-    assert not np.allclose(g_layers_pre,
-                           gan.generator.layers[0].get_weights()[0])
-    assert not np.allclose(d_layers_pre,
-                           gan.discriminator.layers[0].get_weights()[0])
-
-
 def test_optimize_DD_gan(gan, optimize, load_data):
     """
     Test the optimization part of the GAN. Again, We can't really
