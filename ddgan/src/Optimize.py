@@ -1,3 +1,15 @@
+"""
+Copyright: Jón Atli Tómasson
+
+Author: Jón Atli Tómasson
+
+Description: Pattern matching within the latent space
+             Includes a DD and a non-DD version
+
+Acknowledgements: Claire Heaney
+
+Github Repository: https://github.com/acse-jat20/DD-GAN/
+"""
 import tensorflow as tf
 import numpy as np
 from .Train import GAN
@@ -11,6 +23,12 @@ class Optimize:
     """
     Finding position and orienting within the latent space
     to predict in time.
+
+    Inspired by:
+    -   Céesar Quilodráan-Casas, Vinicius Santos Silva,
+        Rossella Arcucci, Claire E. Heaney, Yike Guo, and
+        Christopher C. Pain. Digital twins based on bidirectional
+        LSTM and GAN for modelling the COVID-19 pandemic, 2021.
     """
 
     # Input data hyperparameters
@@ -46,7 +64,8 @@ class Optimize:
     disturb: bool = False  # Nudge the optimization from local minima
 
     def mse_loss(self, input, output):
-        """Mean square error loss function
+        """
+        Mean square error loss function
 
         Args:
             input (tensor): Predicted values

@@ -1,6 +1,14 @@
 """
-This file includes the GAN class for training a DD-GAN
+Copyright: Jón Atli Tómasson
 
+Author: Jón Atli Tómasson, Claire Heaney
+
+Description: Pattern matching within the latent space
+             Includes a DD and a non-DD version
+
+Acknowledgements: Zeff Wolfs
+
+Github Repository: https://github.com/acse-jat20/DD-GAN/
 """
 
 __all__ = ['GAN']
@@ -17,8 +25,24 @@ from ddgan.src.Utils import train_step, truncated_normal
 @dataclass(unsafe_hash=True)
 class GAN:
     """
-    Class for the predictive GAN
+    Class for the predictive WGAN.
+
+    Inspired by:
+    -   Ishaan Gulrajani, Faruk Ahmed, Martin Arjovsky,
+        Vincent Dumoulin, and Aaron Courville.
+        Improved Training of Wasserstein GANs, 2017
+
+    -   Céesar Quilodráan-Casas, Vinicius Santos Silva,
+        Rossella Arcucci, Claire E. Heaney, Yike Guo, and
+        Christopher C. Pain. Digital twins based on bidirectional
+        LSTM and GAN for modelling the COVID-19 pandemic, 2021.
+
+    -   D. Xiao, C.E. Heaney, F. Fang, L. Mottet, R. Hu, D.A. Bistrian,
+        E. Aristodemou, I.M. Navon, and C.C. Pain. A domain decomposition
+        non-intrusive reduced order model for turbulent flows.
+        Computers & Fluids, 182:15{27, 2019.
     """
+
     # Keyword argument definitions
     # Input data parameters
     nsteps: int = 10  # Consecutive timesteps

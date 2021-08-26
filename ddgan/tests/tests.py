@@ -1,12 +1,16 @@
+"""
+Copyright: Jón Atli Tómasson
+
+Author: Jón Atli Tómasson, Zef Wolffs
+
+Description: Pattern matching within the latent space
+             Includes a DD and a non-DD version
+
+Github Repository: https://github.com/acse-jat20/DD-GAN/
+"""
 from pytest import fixture
 import numpy as np
 import sklearn.preprocessing
-
-"""
-The following tests test the non-DD version of the DD-GAN
-
-Please execute module from root of repository
-"""
 
 
 @fixture(scope='module')

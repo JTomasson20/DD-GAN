@@ -1,3 +1,12 @@
+"""
+Copyright: Jón Atli Tómasson
+
+Author: Jón Atli Tómasson
+
+Description: Utility functions for the DD-GAN
+
+Github Repository: https://github.com/acse-jat20/DD-GAN/
+"""
 import numpy as np
 import tensorflow as tf
 import random
@@ -52,7 +61,6 @@ def train_step(gan,
         real (np.ndarray): Actual values
         reverse_step(bool): Whether to make the discriminator take a step back
     """
-
     for i in range(gan.n_critic):
         with tf.GradientTape() as t:
             with tf.GradientTape() as t1:
