@@ -70,9 +70,9 @@ This project contains a library for interacting with a domain decomposition pred
 ### Traversing: Simplified filestructure
 
     .
-    ├── data                   		# Various data files
-    │   ├── FPC_Re3900_2D_CG_old        # .vtu files of FPC
-    │   ├── processed      		# End-to-end, integration tests (alternatively `e2e`)
+    ├── data				# Various data files
+    │   ├── FPC_Re3900_2D_CG_old	# .vtu files of FPC
+    │   ├── processed			# End-to-end, integration tests (alternatively `e2e`)
     │   │   ├── DD			# Decomposed .npy files
     │   │   ├── Single			# Non-DD .npy files
     │   │   └── old			# Non-DD .npy files from an outdated simulation
@@ -83,10 +83,10 @@ This project contains a library for interacting with a domain decomposition pred
     │   │   ├── Train.py		# Class for training a GAN
     │   │   └── Utils.py		# Utils for training and predicting
     │   └── tests 			# Unit testing for GAN
-    ├── docs                    	# Documentation files 
+    ├── docs				# Documentation files 
     ├── examples                     	
     │   ├── models/224			# Saved model for replication purposes 
-    │   └── DD-GAN_usage_example.ipynb  # Usage example notebook
+    │   └── DD-GAN_usage_example.ipynb	# Usage example notebook
     ├── images
     │   ├── flowcharts			# Flowcharts
     │   ├── paraview			# paraview visualisations
