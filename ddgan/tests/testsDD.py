@@ -179,6 +179,7 @@ def test_gan_setup(ddgan):
     for att_name, att in kwargs.items():
         assert att == getattr(gan, att_name)
 
+
 def test_optimize_DD_gan(gan, optimize, load_data):
     """
     Test the optimization part of the GAN. Again, We can't really

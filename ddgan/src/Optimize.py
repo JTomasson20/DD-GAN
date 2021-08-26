@@ -14,21 +14,21 @@ class Optimize:
     """
 
     # Input data hyperparameters
-    start_from: int = 100
-    nPOD: int = 10
+    start_from: int = 100  # Initial timestep
+    nPOD: int = 10  # Number of POD coefficients
     nLatent: int = 10  # Dimensionality of latent space
-    dt: int = 1
+    dt: int = 1  # Delta i in the thesis, step size
 
     # Optimization hyperparameters
     npredictions: int = 20  # Number of future steps
-    optimizer_epochs: int = 5000
-    attempts = 1
+    optimizer_epochs: int = 5000  # Number of optimizer epochs
 
     # Only for DD
-    evaluated_subdomains: int = 2
-    cycles: int = 3
+    evaluated_subdomains: int = 2  # Number of non-boundrary subdomains
+    cycles: int = 3  # Number of times the domains are traversed
+    dim_steps = None  # n in the paper. = [n_b, n_a, n_self]
+
     cumulative_steps = None
-    dim_steps = None
 
     # Objects
     mse = tf.keras.losses.MeanSquaredError()
@@ -39,13 +39,11 @@ class Optimize:
     # this as a private variable
     nOptimized: int = 50
 
-    # Debug mode
-    debug: bool = False
+    debug: bool = False  # Debug mode
 
     # Zeros, Past or None
-    initial_values: str = "Past"
-    reset: bool = False
-    disturb: bool = False
+    initial_values: str = "Past"  # Initial guess for future timestep
+    disturb: bool = False  # Nudge the optimization from local minima
 
     def mse_loss(self, input, output):
         """Mean square error loss function
@@ -111,22 +109,21 @@ class Optimize:
         norm_latent_list = []
         init_latent = prev_latent.numpy()
 
-        for j in range(self.attempts):
-            ip = prev_latent
+        ip = prev_latent
 
-            for epoch in range(self.optimizer_epochs):
-                if epoch % 100 == 0:
-                    print('Optimizer epoch: \t', epoch)
+        for epoch in range(self.optimizer_epochs):
+            if epoch % 100 == 0:
+                print('Optimizer epoch: \t', epoch)
 
-                loss, norm_latent = self.opt_latent_var(ip, real_output)
-                loss_list.append(loss)
-                norm_latent_list.append(norm_latent)
+            loss, norm_latent = self.opt_latent_var(ip, real_output)
+            loss_list.append(loss)
+            norm_latent_list.append(norm_latent)
 
-            r = self.gan.generator(ip, training=False)
-            loss = self.mse(real_output,
-                            r[:, :self.nOptimized])
+        r = self.gan.generator(ip, training=False)
+        loss = self.mse(real_output,
+                        r[:, :self.nOptimized])
 
-            ip_np = ip.numpy()
+        ip_np = ip.numpy()
 
         return ip, loss_list, ip_np, init_latent, norm_latent_list
 
@@ -146,13 +143,12 @@ class Optimize:
             np.ndarray: Updated values
         """
 
-        for j in range(self.attempts):
-            ip = prev_latent
-            for epoch in range(self.optimizer_epochs):
-                if epoch % 100 == 0:
-                    print('Optimizer epoch: \t', epoch)
+        ip = prev_latent
+        for epoch in range(self.optimizer_epochs):
+            if epoch % 100 == 0:
+                print('Optimizer epoch: \t', epoch)
 
-                __, ___ = self.opt_latent_var(ip, real_output)
+            __, ___ = self.opt_latent_var(ip, real_output)
 
         return ip
 
