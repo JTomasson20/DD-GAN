@@ -71,18 +71,18 @@ This project contains a library for interacting with a domain decomposition pred
 
     .
     ├── data				# Various data files
-    │   ├── FPC_Re3900_2D_CG_old	# .vtu files of FPC
+    │   ├── FPC_Re3900_2D_CG_old		# .vtu files of FPC
     │   ├── processed			# End-to-end, integration tests (alternatively `e2e`)
-    │   │   ├── DD			# Decomposed .npy files
+    │   │   ├── DD				# Decomposed .npy files
     │   │   ├── Single			# Non-DD .npy files
-    │   │   └── old			# Non-DD .npy files from an outdated simulation
-    │   └── reconstructed 		# Reconstructed simulation example
+    │   │   └── old				# Non-DD .npy files from an outdated simulation
+    │   └── reconstructed 			# Reconstructed simulation example
     ├── ddgan				# Main method
     │   ├── src
-    │   │   ├── Optimize.py		# Class for predicting fluid flow
-    │   │   ├── Train.py		# Class for training a GAN
-    │   │   └── Utils.py		# Utils for training and predicting
-    │   └── tests 			# Unit testing for GAN
+    │   │   ├── Optimize.py			# Class for predicting fluid flow
+    │   │   ├── Train.py			# Class for training a GAN
+    │   │   └── Utils.py			# Utils for training and predicting
+    │   └── tests 				# Unit testing for GAN
     ├── docs				# Documentation files 
     ├── examples                     	
     │   ├── models/224			# Saved model for replication purposes 
@@ -90,7 +90,7 @@ This project contains a library for interacting with a domain decomposition pred
     ├── images
     │   ├── flowcharts			# Flowcharts
     │   ├── paraview			# paraview visualisations
-    │   └── plots			# Error plots and simulations
+    │   └── plots				# Error plots and simulations
     ├── LICENSE
     ├── README.md
     ├── environment.yml			# Conda env
