@@ -44,19 +44,20 @@ This project contains a library for interacting with a domain decomposition pred
       </ul>
     </li>
     <li>
-      <a href="#documentation">Getting Started</a>
+      <a href="#documentation">Documentation</a>
       <ul>
         <li><a href="#training">Training</a></li>
         <li><a href="#prediction">Prediction</a></li>
       </ul>
+    </li>
+    <li>
+      <a href="#validation">Validation and verification</a>
     </li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#acknowledgements">Acknowledgements</a></li>
   </ol>
 </details>
-
-
 
 
 <!-- GETTING STARTED -->
@@ -124,10 +125,10 @@ from ddgan import *
 
 ### Example data:
 
-* The POD coefficients used in the project can be found under [/data](./data/processed/DD/) *- Original .vtu files curteousy of Dr. Claire Heaney*
+* The POD coefficients used in the project can be found under [data](./data/processed/DD/) *- Original .vtu files curteousy of Dr. Claire Heaney*
 
 ### Example scripts:
-* An example notebook that demonstrates the data formatting, training and prediction can be found in [/examples](./examples/) 
+* An example notebook that demonstrates the data formatting, training and prediction can be found in [examples](./examples/) 
 
 ## Documentation:
 This tool includes a workflow split up into two packages. 
@@ -226,6 +227,32 @@ optimizer.predictDD(training_data,
 <!-- ACKNOWLEDGEMENTS 
 _For more information, please refer to the report in this repo_
 -->
+
+## Validation
+
+The code presented in the repo has been validated using unit testing and by the results as can be found in [examples](./examples/).
+
+### Training validation
+
+Here is the data distribition of the first 10 POD coefficients before training the gan and the imitation by the GAN. Replication code can be found in [examples](./examples/).
+
+<p align="center">
+  <a href="https://github.com/acse-jat20/DD-GAN">
+    <img src="images/plots/Probability_distributions_background.png" alt="Logo" width="785" height="387">
+  </a>
+</p>
+
+### Forcast validation 
+
+Line plots of the first 5 POD coefcients predicted for 200 time steps between the times 700 and 800. Each of the two charts show (from top to bottom) the prediction targets, the predicted values and the difference between the two. Replication code can be found in [examples](./examples/).
+
+<p align="center">
+  <a href="https://github.com/acse-jat20/DD-GAN">
+    <img src="images/plots/predictive_adverserial_prediction_background.png" alt="Logo" width="785" height="404">
+  </a>
+</p>
+
+
 <!-- LICENSE -->
 
 ## License
