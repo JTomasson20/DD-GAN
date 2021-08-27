@@ -248,7 +248,7 @@ Line plots of the first 5 POD coefcients predicted for 200 time steps between th
 
 <p align="center">
   <a href="https://github.com/acse-jat20/DD-GAN">
-    <img src="images/plots/predictive_adverserial_prediction_background.png" alt="Logo" width="785" height="404">
+    <img src="images/plots/predictive_adverserial_prediction_background.png" alt="Logo" width="785" height="553">
   </a>
 </p>
 
