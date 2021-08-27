@@ -11,4 +11,3 @@ tensorflow
 scikit-learn
 matplotlib
 jupyter
-jupyter-notebook
