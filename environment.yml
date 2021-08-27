@@ -15,4 +15,4 @@ dependencies:
   - pip:
     - tensorflow
     - scikit-learn
-    - jupyter-notebook
+    - jupyter
